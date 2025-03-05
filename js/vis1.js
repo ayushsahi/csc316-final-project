@@ -61,15 +61,12 @@
     .attr("d", line);
 
   // 8) Define the zoom behavior
-  //    scaleExtent = how far in/out you can zoom
-  //    translateExtent = limit panning outside the chart
   const zoom = d3.zoom()
-    .scaleExtent([1, 8])                       // min to max zoom
-    .translateExtent([[0, 0], [width, height]]) // cannot pan outside
+    .scaleExtent([1, 8])                     
+    .translateExtent([[0, 0], [width, height]]) 
     .on("zoom", zoomed);
 
   function zoomed(event) {
-    // event.transform gives us scale & translation
     const newX = event.transform.rescaleX(x); // rescale the x axis
     const newY = event.transform.rescaleY(y); // rescale the y axis if desired
 
@@ -85,10 +82,9 @@
   }
 
   // 9) Call zoom on the top-level <svg>
-  //    If you want the user to zoom by scrolling or panning anywhere on the chart
   svg.call(zoom)
     .transition()
     .duration(1000)
-    .call(zoom.scaleBy, 1);  // optional initial transition
+    .call(zoom.scaleBy, 1);  
 
 })();
