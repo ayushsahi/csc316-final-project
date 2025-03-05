@@ -67,8 +67,8 @@
     .on("zoom", zoomed);
 
   function zoomed(event) {
-    const newX = event.transform.rescaleX(x); // rescale the x axis
-    const newY = event.transform.rescaleY(y); // rescale the y axis if desired
+    const newX = event.transform.rescaleX(x); 
+    const newY = event.transform.rescaleY(y); 
 
     // update axes
     xAxis.call(d3.axisBottom(newX).ticks(10));

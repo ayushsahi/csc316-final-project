@@ -48,10 +48,10 @@
   // # categories
   const n = barData.length;
 
-  // x = linear scale from [0..n], mapped to [0..width]
+  // x = linear scale
   const x = d3.scaleLinear()
-    .domain([0, n])           // 0..n
-    .range([0, width]);       // pixel range
+    .domain([0, n])          
+    .range([0, width]);     
 
   // y = linear scale for avgValue
   const y = d3.scaleLinear()
@@ -124,7 +124,6 @@
     .text("Avg CPI by Product Group (Canada, 2024) - Zoom Enabled");
 
   // 11) Define a 2D zoom: user can zoom and pan both horizontally and vertically
-  //    up to 5x in each direction
   const zoom = d3.zoom()
     .scaleExtent([1, 5])                     
     .translateExtent([[0, 0], [width, height]])
