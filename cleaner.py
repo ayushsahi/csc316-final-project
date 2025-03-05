@@ -4,7 +4,8 @@ from datetime import datetime
 
 def clean_cpi_data(input_file, output_file):
     """
-    Clean the CPI dataset to focus on food-related categories from 1970 onwards.
+    Clean the CPI dataset to focus ONLY on food-related categories from 1970 onwards.
+    Excludes the 'All-items' category completely.
     
     Args:
         input_file (str): Path to the input CSV file
@@ -27,13 +28,17 @@ def clean_cpi_data(input_file, output_file):
     # List of food-related categories to keep
     food_categories = [
         'Food', 
+        'Food purchased from stores',
         'Meat',
+        'Fresh or frozen meat (excluding poultry)',
         'Fresh or frozen beef',
         'Fresh or frozen pork',
         'Fresh or frozen poultry',
         'Fresh or frozen chicken',
         'Processed meat',
+        'Fish, seafood and other marine products',
         'Fish',
+        'Dairy products and eggs',
         'Dairy products',
         'Fresh milk',
         'Butter',
@@ -42,6 +47,7 @@ def clean_cpi_data(input_file, output_file):
         'Bakery and cereal products (excluding baby food)',
         'Bakery products',
         'Cereal products (excluding baby food)',
+        'Fruit, fruit preparations and nuts',
         'Fresh fruit',
         'Preserved fruit and fruit preparations',
         'Vegetables and vegetable preparations',
@@ -59,17 +65,6 @@ def clean_cpi_data(input_file, output_file):
     
     print(f"Dataset after category filtering: {df.shape}")
     
-    # Include 'All-items' category as a reference for overall CPI
-    all_items_df = pd.read_csv(input_file)
-    all_items_df['REF_DATE'] = pd.to_datetime(all_items_df['REF_DATE'], format='%Y-%m')
-    all_items_df = all_items_df[all_items_df['REF_DATE'].dt.year >= 1970]
-    all_items_df = all_items_df[all_items_df['Products and product groups'] == 'All-items']
-    
-    # Combine food categories with All-items
-    df = pd.concat([df, all_items_df])
-    
-    print(f"Final dataset shape: {df.shape}")
-    
     # Filter to include only specific columns
     columns_to_keep = ['REF_DATE', 'GEO', 'Products and product groups', 'VALUE']
     df = df[columns_to_keep]
@@ -81,6 +76,11 @@ def clean_cpi_data(input_file, output_file):
     # Generate info about provinces
     provinces = df['GEO'].unique()
     print(f"Available provinces/regions: {provinces}")
+    
+    # Print some summary stats on the categories
+    cat_counts = df['Products and product groups'].value_counts()
+    print("\nNumber of data points per food category:")
+    print(cat_counts)
     
     return df
 
