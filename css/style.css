@@ -1,0 +1,31 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+header, footer {
+  background: #eee;
+  padding: 1em;
+  text-align: center;
+}
+
+main {
+  margin: 1em;
+}
+
+h1, h2 {
+  margin-bottom: 0.5em;
+}
+
+section {
+  margin: 2em 0;
+  padding: 1em;
+  border: 1px solid #ccc;
+}
+
+#vis1, #vis2, #vis3 {
+  width: 800px;    /* adjust as needed */
+  height: 500px;   /* adjust as needed */
+  margin: auto;
+}
