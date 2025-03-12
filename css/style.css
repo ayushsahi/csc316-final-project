@@ -157,6 +157,136 @@ svg {
   stroke-width: 3px;
 }
 
+
+
+
+
+
+/* Scrollable container for the calendar view */
+.scroll-container {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 15px 5px;
+  margin-bottom: 20px;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  background-color: #fcfcfc;
+  /* Customized scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: #ccc transparent;
+}
+
+/* Webkit scrollbar styling */
+.scroll-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.scroll-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.scroll-container::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+.scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* Calendar container that holds all years side by side */
+.calendar-container {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  min-width: fit-content;
+}
+
+/* Each year container */
+.year-container {
+  display: inline-block;
+  vertical-align: top;
+  margin-right: 20px;
+  min-width: 350px;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  padding: 10px;
+}
+
+/* Year title */
+.year-title {
+  text-align: center;
+  font-weight: bold;
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+/* Calendar grid layout */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 5px;
+}
+
+/* Month label styling */
+.month-label {
+  text-align: center;
+  font-size: 12px;
+  padding-bottom: 5px;
+  color: #555;
+}
+
+/* Month cell styling */
+.month-cell {
+  width: 25px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid #ccc;
+  margin: auto;
+}
+
+.month-cell:hover {
+  transform: scale(1.1);
+  border: 2px solid #333;
+  z-index: 1;
+}
+
+/* Title for the whole calendar */
+.calendar-title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+/* Legend container */
+.legend-container {
+  margin-top: 20px;
+  text-align: center;
+  padding: 5px;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* Scroll instructions */
+.scroll-instructions {
+  text-align: center;
+  font-style: italic;
+  color: #666;
+  margin: 10px 0;
+  font-size: 12px;
+}
 .focus-line, .focus-circles {
   transition: opacity 0.2s;
 }
