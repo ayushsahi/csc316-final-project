@@ -1,24 +1,17 @@
 (async function() {
   // 1) Load CSV
-  const data = await d3.csv("data/data.csv");
+  const data = await d3.csv("data/food_cpi_data.csv");
 
-  // 2) Parse & Filter
+  // 2) Parse data
   const parseDate = d3.timeParse("%Y-%m");
   data.forEach(d => {
     d.date = parseDate(d["REF_DATE"]);
     d.value = +d["VALUE"];
   });
 
-  // Filter for Canada, 2024 only
-  const filteredData = data.filter(d =>
-    d["GEO"] === "Canada" &&
-    d.date != null &&
-    d.date.getFullYear() === 2024
-  );
-
-  // 3) Aggregate by product group (mean of 2024)
+  // 3) Aggregate by product group (mean across all data)
   const groupRollup = d3.rollups(
-    filteredData,
+    data,
     v => d3.mean(v, d => d.value),
     d => d["Products and product groups"]
   );
