@@ -1,14 +1,14 @@
 (async function() {
   // 1) Load CSV
-  const data = await d3.csv("data/data.csv");
+  const data = await d3.csv("data/food_cpi_data.csv");
 
   // 2) Filter & parse
   const filteredData = data.filter(d =>
     d["GEO"] === "Canada" &&
-    d["Products and product groups"] === "All-items"
+    d["Products and product groups"] === "Food"
   );
 
-  const parseDate = d3.timeParse("%Y-%m");
+  const parseDate = d3.timeParse("%Y-%m-%d");
   filteredData.forEach(d => {
     d.date = parseDate(d["REF_DATE"]);
     d.value = +d["VALUE"];
@@ -44,8 +44,31 @@
     .attr("transform", `translate(0,${height})`)
     .call(d3.axisBottom(x).ticks(10));
 
+  // Add X axis label
+  g.append("text")
+    .attr("transform", `translate(${width/2}, ${height + 40})`)
+    .style("text-anchor", "middle")
+    .text("Year");
+
   const yAxis = g.append("g")
     .call(d3.axisLeft(y));
+
+  // Add Y axis label
+  g.append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("y", -40)
+    .attr("x", -height / 2)
+    .style("text-anchor", "middle")
+    .text("CPI Value");
+
+  // Add title
+  g.append("text")
+    .attr("x", width / 2)
+    .attr("y", -10)
+    .attr("text-anchor", "middle")
+    .style("font-size", "16px")
+    .style("font-weight", "bold")
+    .text("Canada Food CPI (1970-2024)");
 
   // 7) Line generator + path
   const line = d3.line()
@@ -86,5 +109,4 @@
     .transition()
     .duration(1000)
     .call(zoom.scaleBy, 1);  
-
 })();
