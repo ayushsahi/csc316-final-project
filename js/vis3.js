@@ -1,12 +1,11 @@
 // Enhanced vis3.js file with province filtering, product group filtering, and improved zooming
 (async function() {
-  // 1) Load CSV - use the filtered data
+  // 1) Load CSV
   const data = await d3.csv("data/food_cpi_data.csv");
   
   // 2) Parse date & numeric value
   const parseDate = d3.timeParse("%Y-%m-%d");
   data.forEach(d => {
-    // Handle different possible date formats (adjust as needed)
     d.date = parseDate(d["REF_DATE"]) || d3.timeParse("%Y-%m")(d["REF_DATE"]);
     d.value = +d["VALUE"];
   });
@@ -17,13 +16,10 @@
   
   const controlPanel = d3.select("#vis3")
     .append("div")
-    .attr("class", "control-panel")
-    .style("margin-bottom", "20px");
+    .attr("class", "control-panel");
   
-  // Add province selector
-  const provinceSelector = controlPanel.append("div")
-    .style("margin-bottom", "10px");
-  
+  // Province selector
+  const provinceSelector = controlPanel.append("div");
   provinceSelector.append("label")
     .text("Select Province: ")
     .attr("for", "province-select");
@@ -31,7 +27,6 @@
   const provinceSelect = provinceSelector.append("select")
     .attr("id", "province-select");
   
-  // Add options for each province
   provinceSelect.selectAll("option")
     .data(provinces)
     .enter()
@@ -135,15 +130,20 @@
     });
   
   // 3) Chart dimensions
-  const margin = { top: 30, right: 120, bottom: 50, left: 80 },
-        width = 800 - margin.left - margin.right,
-        height = 500 - margin.top - margin.bottom;
+  // Match these to the .vis-canvas width & height in CSS
+  const totalWidth = 820,
+        totalHeight = 560;
+  
+  // Increase bottom margin if your x-axis label was getting cut off
+  const margin = { top: 30, right: 120, bottom: 70, left: 80 },
+        width = totalWidth - margin.left - margin.right,
+        height = totalHeight - margin.top - margin.bottom;
   
   // Create SVG container
   const svg = d3.select("#vis3")
     .append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
+    .attr("width", totalWidth)
+    .attr("height", totalHeight)
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
   
@@ -331,7 +331,7 @@
     // Add circles for each product group for tooltip/hover
     nested.forEach(([groupName, data]) => {
       focusCircles.append("circle")
-        .attr("class", `circle-${groupName.replace(/\s+/g, '-').toLowerCase()}`)
+        .attr("class", safeClass)
         .attr("r", 5)
         .attr("fill", color(groupName))
         .attr("stroke", "#fff")
@@ -362,17 +362,11 @@
     function mousemove(event) {
       const mouseX = d3.pointer(event)[0];
       const xDate = x.invert(mouseX);
-      
-      // Update focus line position
       focusLine.attr("x1", mouseX).attr("x2", mouseX);
       
-      // Format for tooltip display
       const formatDate = d3.timeFormat("%B %Y");
-      
-      // Find closest data points for each group
       let tooltipContent = `<strong>Date:</strong> ${formatDate(xDate)}<br><br>`;
       
-      // Sort product groups for tooltip display (All-items first, then alphabetically)
       const sortedGroups = [...nested].sort((a, b) => {
         if (a[0] === "All-items") return -1;
         if (b[0] === "All-items") return 1;
@@ -380,25 +374,22 @@
       });
       
       sortedGroups.forEach(([groupName, groupData]) => {
-        // Find closest data point
         const bisectDate = d3.bisector(d => d.date).left;
         const i = bisectDate(groupData, xDate, 1);
         
-        // Ensure we have data on both sides
         if (i > 0 && i < groupData.length) {
           const d0 = groupData[i - 1];
           const d1 = groupData[i];
           const d = xDate - d0.date > d1.date - xDate ? d1 : d0;
           
-          // Position the circle for this group
-          focusCircles.select(`.circle-${groupName.replace(/\s+/g, '-').toLowerCase()}`)
+          const safeClass = `circle-${makeSafeClassName(groupName)}`;
+          focusCircles.select(`.${safeClass}`)
             .attr("cx", x(d.date))
             .attr("cy", y(d.value));
           
-          // Add to tooltip content
           const isAllItems = groupName === "All-items";
           tooltipContent += `
-            <div style="display: flex; align-items: center; margin-bottom: 5px; 
+            <div style="display: flex; align-items: center; margin-bottom: 5px;
                 ${isAllItems ? 'font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 8px;' : ''}">
               <div style="width: 10px; height: 10px; background: ${color(groupName)}; margin-right: 8px;"></div>
               <strong>${groupName}:</strong> ${d.value.toFixed(1)}
@@ -407,7 +398,6 @@
         }
       });
       
-      // Update tooltip
       tooltip
         .style("left", (event.pageX + 15) + "px")
         .style("top", (event.pageY - 28) + "px")

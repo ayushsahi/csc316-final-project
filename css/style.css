@@ -44,14 +44,9 @@ main {
   padding: 1em 1.5em;
   margin-bottom: 2em;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-
-  /* 
-    Use flex layout so the .vis-canvas 
-    can be centered easily
-  */
   display: flex;
   flex-direction: column;
-  align-items: center; /* center children horizontally */
+  align-items: center;
 }
 
 .vis-section h2 {
@@ -62,10 +57,6 @@ main {
 
 /* Visualization canvas */
 .vis-canvas {
-  /* 
-    Constrain width for centering on large screens 
-    but allow shrinking on smaller screens 
-  */
   width: 100%;
   max-width: 800px;
   height: 500px;
@@ -99,4 +90,49 @@ footer {
   .vis-canvas {
     height: 300px;
   }
+}
+
+/* Visualization specific styling */
+.control-panel {
+  background: #f8f8f8;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+#province-select {
+  padding: 5px;
+  margin: 0 10px;
+  min-width: 150px;
+}
+
+button {
+  background: #4676bd;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+button:hover {
+  background: #3a5d8f;
+}
+
+.focus-line,
+.focus-circles {
+  transition: opacity 0.2s;
+}
+
+.tooltip {
+  transition: opacity 0.2s;
+  max-width: 300px;
+}
+
+.line-group {
+  transition: opacity 0.2s;
+}
+
+.line-group:hover {
+  stroke-width: 3px;
 }
