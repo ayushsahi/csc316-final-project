@@ -1,4 +1,4 @@
-// Enhanced vis3.js file with province filtering and improved zooming
+// Enhanced vis3.js file with province filtering, product group filtering, and improved zooming
 (async function() {
   // 1) Load CSV - use the filtered data
   const data = await d3.csv("data/food_cpi_data.csv");
@@ -11,8 +11,9 @@
     d.value = +d["VALUE"];
   });
   
-  // Create UI controls for province selection
+  // Create UI controls for province and product selection
   const provinces = [...new Set(data.map(d => d["GEO"]))].sort();
+  const productGroups = [...new Set(data.map(d => d["Products and product groups"]))].sort();
   
   const controlPanel = d3.select("#vis3")
     .append("div")
@@ -38,18 +39,100 @@
     .attr("value", d => d)
     .text(d => d);
   
-  // Add filter button
-  controlPanel.append("button")
-    .attr("id", "filter-button")
-    .text("Apply Filter")
-    .style("margin-right", "10px")
+  // Add product group filter section
+  controlPanel.append("div")
+    .attr("class", "filter-title")
+    .text("Filter by Product Group")
+    .style("font-weight", "bold")
+    .style("margin", "10px 0");
+  
+  // Add toggle button to show/hide filters
+  const toggleButton = controlPanel.append("button")
+    .attr("class", "toggle-filters-button")
+    .text("Show Product Filters")
+    .style("margin-bottom", "10px")
     .style("padding", "5px 10px");
+  
+  // Container for product checkboxes
+  const filterContainer = controlPanel.append("div")
+    .attr("class", "filter-container")
+    .style("display", "none")
+    .style("max-height", "200px")
+    .style("overflow-y", "auto")
+    .style("border", "1px solid #ddd")
+    .style("padding", "10px")
+    .style("margin-bottom", "10px");
+  
+  // Toggle filter display
+  toggleButton.on("click", function() {
+    const isHidden = filterContainer.style("display") === "none";
+    filterContainer.style("display", isHidden ? "block" : "none");
+    toggleButton.text(isHidden ? "Hide Product Filters" : "Show Product Filters");
+  });
+  
+  // Add select all/none buttons
+  const selectAllContainer = filterContainer.append("div")
+    .style("margin-bottom", "10px");
+  
+  selectAllContainer.append("button")
+    .text("Select All")
+    .style("margin-right", "10px")
+    .style("padding", "3px 8px")
+    .on("click", function() {
+      filterContainer.selectAll(".product-checkbox")
+        .property("checked", true);
+    });
+  
+  selectAllContainer.append("button")
+    .text("Select None")
+    .style("padding", "3px 8px")
+    .on("click", function() {
+      filterContainer.selectAll(".product-checkbox")
+        .property("checked", false);
+    });
+  
+  // Add checkboxes for each product group
+  productGroups.forEach(product => {
+    const checkboxContainer = filterContainer.append("div")
+      .style("margin-bottom", "5px");
+    
+    checkboxContainer.append("input")
+      .attr("type", "checkbox")
+      .attr("id", `vis3-product-${product.replace(/\s+/g, '-').toLowerCase()}`)
+      .attr("class", "product-checkbox")
+      .attr("value", product)
+      .property("checked", product === "All-items" || product === "Food") // Default to showing main items
+      .on("change", function() {
+        // Enable apply button when checkboxes change
+        applyButton.property("disabled", false);
+      });
+    
+    checkboxContainer.append("label")
+      .attr("for", `vis3-product-${product.replace(/\s+/g, '-').toLowerCase()}`)
+      .text(product)
+      .style("margin-left", "5px");
+  });
+  
+  // Add filter button
+  const applyButton = controlPanel.append("button")
+    .attr("id", "filter-button")
+    .text("Apply Filters")
+    .style("margin-right", "10px")
+    .style("padding", "5px 10px")
+    .property("disabled", true)
+    .on("click", function() {
+      updateVisualization();
+      applyButton.property("disabled", true);
+    });
   
   // Add reset zoom button
   controlPanel.append("button")
     .attr("id", "reset-zoom")
     .text("Reset Zoom")
-    .style("padding", "5px 10px");
+    .style("padding", "5px 10px")
+    .on("click", function() {
+      svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
+    });
   
   // 3) Chart dimensions
   const margin = { top: 30, right: 120, bottom: 50, left: 80 },
@@ -64,16 +147,122 @@
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
   
-  // Function to update visualization based on selected province
+  // Create scales
+  const x = d3.scaleTime()
+    .range([0, width]);
+  
+  const y = d3.scaleLinear()
+    .range([height, 0]);
+  
+  // Create axes groups
+  const xAxis = svg.append("g")
+    .attr("class", "x-axis")
+    .attr("transform", `translate(0, ${height})`);
+  
+  const yAxis = svg.append("g")
+    .attr("class", "y-axis");
+  
+  // Add axis labels
+  svg.append("text")
+    .attr("class", "x-label")
+    .attr("text-anchor", "middle")
+    .attr("x", width / 2)
+    .attr("y", height + 40)
+    .text("Year");
+  
+  svg.append("text")
+    .attr("class", "y-label")
+    .attr("text-anchor", "middle")
+    .attr("transform", "rotate(-90)")
+    .attr("x", -height / 2)
+    .attr("y", -60)
+    .text("Consumer Price Index (2002=100)");
+  
+  // Add title
+  const title = svg.append("text")
+    .attr("class", "chart-title")
+    .attr("x", width / 2)
+    .attr("y", -10)
+    .attr("text-anchor", "middle")
+    .attr("font-size", "16px");
+  
+  // Create color scale
+  const colorPalette = d3.schemeCategory10.concat(d3.schemeSet2);
+  const color = d3.scaleOrdinal(colorPalette);
+  
+  // Create vertical line for hover tracking
+  const focusLine = svg.append("line")
+    .attr("class", "focus-line")
+    .attr("y1", 0)
+    .attr("y2", height)
+    .attr("stroke", "#999")
+    .attr("stroke-width", 1)
+    .attr("stroke-dasharray", "3,3")
+    .style("opacity", 0);
+  
+  // Create tooltip
+  const tooltip = d3.select("body").append("div")
+    .attr("class", "tooltip")
+    .style("position", "absolute")
+    .style("background", "rgba(255, 255, 255, 0.9)")
+    .style("border", "1px solid #ddd")
+    .style("border-radius", "4px")
+    .style("padding", "10px")
+    .style("box-shadow", "0 0 10px rgba(0,0,0,0.1)")
+    .style("pointer-events", "none")
+    .style("opacity", 0);
+  
+  // Create focus circles group for hover data points
+  const focusCircles = svg.append("g")
+    .attr("class", "focus-circles")
+    .style("opacity", 0);
+  
+  // Zoom functionality
+  const zoom = d3.zoom()
+    .scaleExtent([1, 8])
+    .extent([[0, 0], [width, height]])
+    .on("zoom", zoomed);
+  
+  // Add invisible rectangle for zoom
+  const zoomRect = svg.append("rect")
+    .attr("class", "zoom-rect")
+    .attr("width", width)
+    .attr("height", height)
+    .style("fill", "none")
+    .style("pointer-events", "all")
+    .call(zoom);
+  
+  // Initialize the visualization with the first province
+  updateVisualization();
+  
+  // Function to update visualization based on selected province and products
   function updateVisualization() {
     // Clear existing elements
-    svg.selectAll("*").remove();
+    svg.selectAll(".line-group").remove();
+    focusCircles.selectAll("*").remove();
     
     // Get selected province
     const selectedProvince = d3.select("#province-select").property("value");
     
-    // Filter data for selected province
-    const filteredData = data.filter(d => d["GEO"] === selectedProvince && d.date);
+    // Get selected products
+    const selectedProducts = [];
+    filterContainer.selectAll(".product-checkbox:checked").each(function() {
+      selectedProducts.push(this.value);
+    });
+    
+    // If no products selected, select "Food" by default
+    if (selectedProducts.length === 0) {
+      selectedProducts.push("Food");
+      filterContainer.select(`#vis3-product-${("Food").replace(/\s+/g, '-').toLowerCase()}`)
+        .property("checked", true);
+    }
+    
+    // Filter data for selected province and products
+    const filteredData = data.filter(d => 
+      d["GEO"] === selectedProvince && 
+      selectedProducts.includes(d["Products and product groups"]) &&
+      d.date
+    );
     
     // Group data by product group
     const nested = d3.groups(filteredData, d => d["Products and product groups"]);
@@ -83,54 +272,28 @@
       group[1].sort((a, b) => a.date - b.date);
     });
     
-    // Define scales
+    // Update domain for color scale
+    color.domain(nested.map(d => d[0]));
+    
+    // Update title
+    title.text(`Food CPI Over Time for ${selectedProvince} (${selectedProducts.length} products)`);
+    
+    // Update scales
     const allDates = nested.flatMap(([, vals]) => vals).map(d => d.date);
-    const x = d3.scaleTime()
-      .domain(d3.extent(allDates))
-      .range([0, width]);
+    x.domain(d3.extent(allDates));
     
     const allValues = nested.flatMap(([, vals]) => vals).map(d => d.value);
-    const y = d3.scaleLinear()
-      .domain([0, d3.max(allValues) * 1.05])
-      .range([height, 0])
-      .nice();
+    y.domain([0, d3.max(allValues) * 1.05]).nice();
     
-    // Create axes
-    const xAxis = svg.append("g")
-      .attr("class", "x-axis")
-      .attr("transform", `translate(0, ${height})`)
-      .call(d3.axisBottom(x).ticks(10));
-    
-    const yAxis = svg.append("g")
-      .attr("class", "y-axis")
-      .call(d3.axisLeft(y));
-    
-    // Add axis labels
-    svg.append("text")
-      .attr("class", "x-label")
-      .attr("text-anchor", "middle")
-      .attr("x", width / 2)
-      .attr("y", height + 40)
-      .text("Year");
-    
-    svg.append("text")
-      .attr("class", "y-label")
-      .attr("text-anchor", "middle")
-      .attr("transform", "rotate(-90)")
-      .attr("x", -height / 2)
-      .attr("y", -60)
-      .text("Consumer Price Index (2002=100)");
+    // Update axes
+    xAxis.call(d3.axisBottom(x).ticks(10));
+    yAxis.call(d3.axisLeft(y));
     
     // Line generator
     const lineGen = d3.line()
       .defined(d => !isNaN(d.value))
       .x(d => x(d.date))
       .y(d => y(d.value));
-    
-    // Color scale (one color per product group)
-    const colorPalette = d3.schemeCategory10.concat(d3.schemeSet2);
-    const color = d3.scaleOrdinal(colorPalette)
-      .domain(nested.map(d => d[0]));
     
     // Draw lines
     const lines = svg.selectAll(".line-group")
@@ -141,6 +304,9 @@
       .attr("stroke", d => color(d[0]))
       .attr("stroke-width", d => d[0] === "All-items" ? 3 : 1.5)
       .attr("d", d => lineGen(d[1]));
+    
+    // Clear existing legend
+    svg.selectAll(".legend").remove();
     
     // Add a legend
     const legend = svg.selectAll(".legend")
@@ -162,79 +328,7 @@
       .attr("dy", ".35em")
       .text(d => d);
     
-    // Add title
-    svg.append("text")
-      .attr("x", width / 2)
-      .attr("y", -10)
-      .attr("text-anchor", "middle")
-      .attr("font-size", "16px")
-      .text(`Food CPI Over Time for ${selectedProvince}`);
-      
-    // Zoom functionality
-    const zoom = d3.zoom()
-      .scaleExtent([1, 8])
-      .extent([[0, 0], [width, height]])
-      .on("zoom", zoomed);
-      
-    function zoomed(event) {
-      // Create new scale based on zoom event
-      const newX = event.transform.rescaleX(x);
-      
-      // Update x-axis
-      xAxis.call(d3.axisBottom(newX).ticks(10));
-      
-      // Update lines
-      lines.attr("d", function(d) {
-        return d3.line()
-          .defined(d => !isNaN(d.value))
-          .x(d => newX(d.date))
-          .y(d => y(d.value))
-          (d[1]);
-      });
-      
-      // Update the focus line and circles if they exist
-      if (focusLine) {
-        focusLine.style("display", "none"); // Hide during zoom
-      }
-    }
-    
-    // Add invisible rectangle for zoom
-    const zoomRect = svg.append("rect")
-      .attr("class", "zoom-rect")
-      .attr("width", width)
-      .attr("height", height)
-      .style("fill", "none")
-      .style("pointer-events", "all")
-      .call(zoom);
-      
-    // Create vertical line for hover tracking
-    const focusLine = svg.append("line")
-      .attr("class", "focus-line")
-      .attr("y1", 0)
-      .attr("y2", height)
-      .attr("stroke", "#999")
-      .attr("stroke-width", 1)
-      .attr("stroke-dasharray", "3,3")
-      .style("opacity", 0);
-    
-    // Create tooltip
-    const tooltip = d3.select("body").append("div")
-      .attr("class", "tooltip")
-      .style("position", "absolute")
-      .style("background", "rgba(255, 255, 255, 0.9)")
-      .style("border", "1px solid #ddd")
-      .style("border-radius", "4px")
-      .style("padding", "10px")
-      .style("box-shadow", "0 0 10px rgba(0,0,0,0.1)")
-      .style("pointer-events", "none")
-      .style("opacity", 0);
-    
-    // Create focus circles for data points
-    const focusCircles = svg.append("g")
-      .attr("class", "focus-circles")
-      .style("opacity", 0);
-    
-    // Add circles for each product group
+    // Add circles for each product group for tooltip/hover
     nested.forEach(([groupName, data]) => {
       focusCircles.append("circle")
         .attr("class", `circle-${groupName.replace(/\s+/g, '-').toLowerCase()}`)
@@ -245,6 +339,8 @@
     });
     
     // Add overlay for mouse tracking
+    svg.select(".overlay").remove();
+    
     svg.append("rect")
       .attr("class", "overlay")
       .attr("width", width)
@@ -319,17 +415,35 @@
     }
   }
   
-  // Initialize the visualization with the first province
-  updateVisualization();
+  // Zoomed function for handling zoom events
+  function zoomed(event) {
+    // Create new scale based on zoom event
+    const newX = event.transform.rescaleX(x);
+    
+    // Update x-axis
+    xAxis.call(d3.axisBottom(newX).ticks(10));
+    
+    // Update lines
+    svg.selectAll(".line-group").attr("d", function(d) {
+      return d3.line()
+        .defined(d => !isNaN(d.value))
+        .x(d => newX(d.date))
+        .y(d => y(d.value))
+        (d[1]);
+    });
+    
+    // Hide focus elements during zoom
+    focusLine.style("display", "none");
+    focusCircles.style("opacity", 0);
+    tooltip.style("opacity", 0);
+  }
   
   // Add event listener to the filter button
   d3.select("#filter-button").on("click", updateVisualization);
   
-  // Add event listener to reset zoom
-  d3.select("#reset-zoom").on("click", function() {
-    d3.select("#vis3 svg g").transition()
-      .duration(750)
-      .call(d3.zoom().transform, d3.zoomIdentity);
+  // Add event listener for province changes
+  provinceSelect.on("change", function() {
+    applyButton.property("disabled", false);
   });
   
   // Add some CSS to style the UI controls
@@ -348,6 +462,13 @@
       min-width: 150px;
     }
     
+    .filter-container {
+      background: #fff;
+      border-radius: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    
     button {
       background: #4676bd;
       color: white;
@@ -359,6 +480,11 @@
     
     button:hover {
       background: #3a5d8f;
+    }
+    
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
     }
     
     .focus-line, .focus-circles {
