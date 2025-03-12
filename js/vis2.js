@@ -102,19 +102,9 @@
       updateVisualization();
       applyButton.property("disabled", true);
     });
-  
-  // Add reset zoom button
-  controlPanel.append("button")
-    .attr("class", "reset-zoom-button")
-    .text("Reset Zoom")
-    .style("margin-left", "10px")
-    .style("padding", "5px 10px")
-    .on("click", function() {
-      svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
-    });
 
   // 4) Chart dimensions
-  const margin = { top: 40, right: 30, bottom: 90, left: 60 },
+  const margin = { top: 40, right: 30, bottom: 120, left: 60 },
         width  = 800 - margin.left - margin.right,
         height = 500 - margin.top  - margin.bottom;
 
@@ -164,15 +154,6 @@
     .style("pointer-events", "none")
     .style("box-shadow", "0 4px 8px rgba(0,0,0,0.1)");
 
-  // Define zoom behavior
-  const zoom = d3.zoom()
-    .scaleExtent([1, 5])
-    .translateExtent([[0, 0], [width, height]])
-    .on("zoom", zoomed);
-
-  // Apply zoom to SVG
-  svg.call(zoom);
-
   // Initialize with all products
   updateVisualization();
 
@@ -220,7 +201,9 @@
     xAxisG.call(xAxis)
       .selectAll("text")
         .attr("text-anchor", "end")
-        .attr("transform", "rotate(-45) translate(-5,-5)");
+        .attr("transform", "rotate(-45) translate(-5,-5)")
+        .style("font-size", "6px") // Smaller font size for x-axis labels
+        .style("font-family", "Arial, sans-serif"); // Ensure consistent font family
     
     // Update y-axis
     yAxisG.call(d3.axisLeft(y));
@@ -258,38 +241,6 @@
       .on("mouseout", function() {
         tooltip.style("display", "none");
       });
-  }
-
-  // Zoom function
-  function zoomed(event) {
-    const newX = event.transform.rescaleX(x);
-    const newY = event.transform.rescaleY(y);
-
-    // Update axes
-    const minI = Math.floor(Math.max(0, newX.invert(0)));
-    const maxI = Math.ceil(Math.min(g.selectAll(".bar").size(), newX.invert(width)));
-    const tickIndices = d3.range(minI, maxI);
-    
-    const barData = g.selectAll(".bar").data();
-    
-    const xAxisZoomed = d3.axisBottom(newX)
-      .tickValues(tickIndices)
-      .tickFormat(i => barData[i]?.product ?? "");
-
-    xAxisG.call(xAxisZoomed)
-      .selectAll("text")
-        .attr("text-anchor", "end")
-        .attr("transform", "rotate(-45) translate(-5,-5)");
-
-    yAxisG.call(d3.axisLeft(newY));
-
-    // Update bars
-    const barPadding = 0.1;
-    g.selectAll(".bar")
-      .attr("x", (d, i) => newX(i + barPadding))
-      .attr("width", (d, i) => newX(i+1 - barPadding) - newX(i + barPadding))
-      .attr("y", d => newY(d.avgValue))
-      .attr("height", d => height - newY(d.avgValue));
   }
 
   // Add CSS for styling
