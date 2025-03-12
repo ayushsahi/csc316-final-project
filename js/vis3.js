@@ -147,6 +147,18 @@
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
   
+  // Add clip path to ensure content stays within chart boundaries
+  svg.append("defs")
+    .append("clipPath")
+    .attr("id", "chart-area")
+    .append("rect")
+    .attr("width", width)
+    .attr("height", height);
+  
+  // Create a group for the chart content that will be clipped
+  const chartArea = svg.append("g")
+    .attr("clip-path", "url(#chart-area)");
+  
   // Create scales
   const x = d3.scaleTime()
     .range([0, width]);
@@ -191,7 +203,7 @@
   const color = d3.scaleOrdinal(colorPalette);
   
   // Create vertical line for hover tracking
-  const focusLine = svg.append("line")
+  const focusLine = chartArea.append("line")
     .attr("class", "focus-line")
     .attr("y1", 0)
     .attr("y2", height)
@@ -213,14 +225,20 @@
     .style("opacity", 0);
   
   // Create focus circles group for hover data points
-  const focusCircles = svg.append("g")
+  const focusCircles = chartArea.append("g")
     .attr("class", "focus-circles")
     .style("opacity", 0);
+  
+  // Helper function to make safe class names
+  function makeSafeClassName(str) {
+    return str.replace(/[^\w\s]/gi, '').replace(/\s+/g, '-').toLowerCase();
+  }
   
   // Zoom functionality
   const zoom = d3.zoom()
     .scaleExtent([1, 8])
     .extent([[0, 0], [width, height]])
+    .translateExtent([[0, 0], [width, height]])  // Constrain panning to chart area
     .on("zoom", zoomed);
   
   // Add invisible rectangle for zoom
@@ -238,7 +256,7 @@
   // Function to update visualization based on selected province and products
   function updateVisualization() {
     // Clear existing elements
-    svg.selectAll(".line-group").remove();
+    chartArea.selectAll(".line-group").remove();
     focusCircles.selectAll("*").remove();
     
     // Get selected province
@@ -296,7 +314,7 @@
       .y(d => y(d.value));
     
     // Draw lines
-    const lines = svg.selectAll(".line-group")
+    const lines = chartArea.selectAll(".line-group")
       .data(nested)
       .join("path")
       .attr("class", "line-group")
@@ -330,6 +348,7 @@
     
     // Add circles for each product group for tooltip/hover
     nested.forEach(([groupName, data]) => {
+      const safeClass = `circle-${makeSafeClassName(groupName)}`;
       focusCircles.append("circle")
         .attr("class", safeClass)
         .attr("r", 5)
@@ -339,9 +358,9 @@
     });
     
     // Add overlay for mouse tracking
-    svg.select(".overlay").remove();
+    chartArea.select(".overlay").remove();
     
-    svg.append("rect")
+    chartArea.append("rect")
       .attr("class", "overlay")
       .attr("width", width)
       .attr("height", height)
@@ -414,7 +433,7 @@
     xAxis.call(d3.axisBottom(newX).ticks(10));
     
     // Update lines
-    svg.selectAll(".line-group").attr("d", function(d) {
+    chartArea.selectAll(".line-group").attr("d", function(d) {
       return d3.line()
         .defined(d => !isNaN(d.value))
         .x(d => newX(d.date))
@@ -422,10 +441,16 @@
         (d[1]);
     });
     
-    // Hide focus elements during zoom
-    focusLine.style("display", "none");
-    focusCircles.style("opacity", 0);
-    tooltip.style("opacity", 0);
+    // Update focus elements for hovers
+    const mouseEvt = d3.pointer(event, chartArea.node());
+    if (mouseEvt[0] >= 0 && mouseEvt[0] <= width && mouseEvt[1] >= 0 && mouseEvt[1] <= height) {
+      focusLine.attr("x1", mouseEvt[0]).attr("x2", mouseEvt[0]);
+    } else {
+      // Hide focus elements during zoom if outside bounds
+      focusLine.style("opacity", 0);
+      focusCircles.style("opacity", 0);
+      tooltip.style("opacity", 0);
+    }
   }
   
   // Add event listener to the filter button
