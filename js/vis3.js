@@ -1,28 +1,23 @@
-// Enhanced vis3.js file with province filtering and improved zooming
+// Enhanced vis3.js file with province filtering, product group exclusion, and improved zooming
 (async function() {
-  // 1) Load CSV - use the filtered data
+  // 1) Load CSV
   const data = await d3.csv("data/food_cpi_data.csv");
   
   // 2) Parse date & numeric value
   const parseDate = d3.timeParse("%Y-%m-%d");
   data.forEach(d => {
-    // Handle different possible date formats (adjust as needed)
     d.date = parseDate(d["REF_DATE"]) || d3.timeParse("%Y-%m")(d["REF_DATE"]);
     d.value = +d["VALUE"];
   });
   
-  // Create UI controls for province selection
+  // Create UI controls
   const provinces = [...new Set(data.map(d => d["GEO"]))].sort();
-  
   const controlPanel = d3.select("#vis3")
     .append("div")
-    .attr("class", "control-panel")
-    .style("margin-bottom", "20px");
+    .attr("class", "control-panel");
   
-  // Add province selector
-  const provinceSelector = controlPanel.append("div")
-    .style("margin-bottom", "10px");
-  
+  // Province selector
+  const provinceSelector = controlPanel.append("div");
   provinceSelector.append("label")
     .text("Select Province: ")
     .attr("for", "province-select");
@@ -30,7 +25,6 @@
   const provinceSelect = provinceSelector.append("select")
     .attr("id", "province-select");
   
-  // Add options for each province
   provinceSelect.selectAll("option")
     .data(provinces)
     .enter()
@@ -38,52 +32,76 @@
     .attr("value", d => d)
     .text(d => d);
   
-  // Add filter button
+  // Filter button
   controlPanel.append("button")
     .attr("id", "filter-button")
     .text("Apply Filter")
     .style("margin-right", "10px")
     .style("padding", "5px 10px");
   
-  // Add reset zoom button
+  // Reset zoom button
   controlPanel.append("button")
     .attr("id", "reset-zoom")
     .text("Reset Zoom")
     .style("padding", "5px 10px");
   
   // 3) Chart dimensions
-  const margin = { top: 30, right: 120, bottom: 50, left: 80 },
-        width = 800 - margin.left - margin.right,
-        height = 500 - margin.top - margin.bottom;
+  // Match these to the .vis-canvas width & height in CSS
+  const totalWidth = 820,
+        totalHeight = 560;
+  
+  // Increase bottom margin if your x-axis label was getting cut off
+  const margin = { top: 30, right: 120, bottom: 70, left: 80 },
+        width = totalWidth - margin.left - margin.right,
+        height = totalHeight - margin.top - margin.bottom;
   
   // Create SVG container
   const svg = d3.select("#vis3")
     .append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
+    .attr("width", totalWidth)
+    .attr("height", totalHeight)
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
   
-  // Function to update visualization based on selected province
+  // Helper function for safe class names
+  function makeSafeClassName(name) {
+    return name.replace(/\s+/g, '-').replace(/[()]/g, '').toLowerCase();
+  }
+  
   function updateVisualization() {
-    // Clear existing elements
     svg.selectAll("*").remove();
-    
-    // Get selected province
     const selectedProvince = d3.select("#province-select").property("value");
     
-    // Filter data for selected province
-    const filteredData = data.filter(d => d["GEO"] === selectedProvince && d.date);
+    const excludedProducts = [
+      "Food", 
+      "Food purchased from stores",
+      "Dairy products and eggs",
+      "Bakery and cereal products (excluding baby food)",
+      "Cereal products (excluding baby food)",
+      "Vegetables and vegetable preparations",
+      "Edible fats and oils",
+      "Bakery products",
+      "Preserved fruit and fruit preparations",
+      "Preserved vegetables and vegetable preparations",
+      "Fruit, fruit preparations and nuts",
+      "Meat",
+      "Processed meat",
+      "Fish, seafood and other marine products"
+    ];
     
-    // Group data by product group
+    // Filter data
+    const filteredData = data.filter(d =>
+      d["GEO"] === selectedProvince &&
+      d.date &&
+      !excludedProducts.includes(d["Products and product groups"])
+    );
+    
     const nested = d3.groups(filteredData, d => d["Products and product groups"]);
-    
-    // Sort each sub-array by date
     nested.forEach(group => {
       group[1].sort((a, b) => a.date - b.date);
     });
     
-    // Define scales
+    // Scales
     const allDates = nested.flatMap(([, vals]) => vals).map(d => d.date);
     const x = d3.scaleTime()
       .domain(d3.extent(allDates))
@@ -95,7 +113,7 @@
       .range([height, 0])
       .nice();
     
-    // Create axes
+    // Axes
     const xAxis = svg.append("g")
       .attr("class", "x-axis")
       .attr("transform", `translate(0, ${height})`)
@@ -105,12 +123,12 @@
       .attr("class", "y-axis")
       .call(d3.axisLeft(y));
     
-    // Add axis labels
+    // Axis labels
     svg.append("text")
       .attr("class", "x-label")
       .attr("text-anchor", "middle")
       .attr("x", width / 2)
-      .attr("y", height + 40)
+      .attr("y", height + 40)  // With bottom margin = 70, there's room for label
       .text("Year");
     
     svg.append("text")
@@ -127,7 +145,7 @@
       .x(d => x(d.date))
       .y(d => y(d.value));
     
-    // Color scale (one color per product group)
+    // Color scale
     const colorPalette = d3.schemeCategory10.concat(d3.schemeSet2);
     const color = d3.scaleOrdinal(colorPalette)
       .domain(nested.map(d => d[0]));
@@ -142,7 +160,7 @@
       .attr("stroke-width", d => d[0] === "All-items" ? 3 : 1.5)
       .attr("d", d => lineGen(d[1]));
     
-    // Add a legend
+    // Legend
     const legend = svg.selectAll(".legend")
       .data(nested.map(d => d[0]))
       .join("g")
@@ -162,7 +180,7 @@
       .attr("dy", ".35em")
       .text(d => d);
     
-    // Add title
+    // Title
     svg.append("text")
       .attr("x", width / 2)
       .attr("y", -10)
@@ -170,45 +188,38 @@
       .attr("font-size", "16px")
       .text(`Food CPI Over Time for ${selectedProvince}`);
       
-    // Zoom functionality
+    // Zoom
+    let focusLine, focusCircles;
     const zoom = d3.zoom()
       .scaleExtent([1, 8])
       .extent([[0, 0], [width, height]])
       .on("zoom", zoomed);
-      
+    
     function zoomed(event) {
-      // Create new scale based on zoom event
       const newX = event.transform.rescaleX(x);
-      
-      // Update x-axis
       xAxis.call(d3.axisBottom(newX).ticks(10));
       
-      // Update lines
-      lines.attr("d", function(d) {
-        return d3.line()
-          .defined(d => !isNaN(d.value))
-          .x(d => newX(d.date))
-          .y(d => y(d.value))
-          (d[1]);
-      });
+      lines.attr("d", d3.line()
+        .defined(d => !isNaN(d.value))
+        .x(d => newX(d.date))
+        .y(d => y(d.value))
+      );
       
-      // Update the focus line and circles if they exist
       if (focusLine) {
-        focusLine.style("display", "none"); // Hide during zoom
+        focusLine.style("display", "none");
       }
     }
     
-    // Add invisible rectangle for zoom
-    const zoomRect = svg.append("rect")
+    svg.append("rect")
       .attr("class", "zoom-rect")
       .attr("width", width)
       .attr("height", height)
       .style("fill", "none")
       .style("pointer-events", "all")
       .call(zoom);
-      
-    // Create vertical line for hover tracking
-    const focusLine = svg.append("line")
+    
+    // Focus line
+    focusLine = svg.append("line")
       .attr("class", "focus-line")
       .attr("y1", 0)
       .attr("y2", height)
@@ -217,7 +228,7 @@
       .attr("stroke-dasharray", "3,3")
       .style("opacity", 0);
     
-    // Create tooltip
+    // Tooltip
     const tooltip = d3.select("body").append("div")
       .attr("class", "tooltip")
       .style("position", "absolute")
@@ -229,22 +240,22 @@
       .style("pointer-events", "none")
       .style("opacity", 0);
     
-    // Create focus circles for data points
-    const focusCircles = svg.append("g")
+    // Focus circles
+    focusCircles = svg.append("g")
       .attr("class", "focus-circles")
       .style("opacity", 0);
     
-    // Add circles for each product group
-    nested.forEach(([groupName, data]) => {
+    nested.forEach(([groupName]) => {
+      const safeClass = `circle-${makeSafeClassName(groupName)}`;
       focusCircles.append("circle")
-        .attr("class", `circle-${groupName.replace(/\s+/g, '-').toLowerCase()}`)
+        .attr("class", safeClass)
         .attr("r", 5)
         .attr("fill", color(groupName))
         .attr("stroke", "#fff")
         .attr("stroke-width", 2);
     });
     
-    // Add overlay for mouse tracking
+    // Overlay for mouse tracking
     svg.append("rect")
       .attr("class", "overlay")
       .attr("width", width)
@@ -266,17 +277,11 @@
     function mousemove(event) {
       const mouseX = d3.pointer(event)[0];
       const xDate = x.invert(mouseX);
-      
-      // Update focus line position
       focusLine.attr("x1", mouseX).attr("x2", mouseX);
       
-      // Format for tooltip display
       const formatDate = d3.timeFormat("%B %Y");
-      
-      // Find closest data points for each group
       let tooltipContent = `<strong>Date:</strong> ${formatDate(xDate)}<br><br>`;
       
-      // Sort product groups for tooltip display (All-items first, then alphabetically)
       const sortedGroups = [...nested].sort((a, b) => {
         if (a[0] === "All-items") return -1;
         if (b[0] === "All-items") return 1;
@@ -284,25 +289,22 @@
       });
       
       sortedGroups.forEach(([groupName, groupData]) => {
-        // Find closest data point
         const bisectDate = d3.bisector(d => d.date).left;
         const i = bisectDate(groupData, xDate, 1);
         
-        // Ensure we have data on both sides
         if (i > 0 && i < groupData.length) {
           const d0 = groupData[i - 1];
           const d1 = groupData[i];
           const d = xDate - d0.date > d1.date - xDate ? d1 : d0;
           
-          // Position the circle for this group
-          focusCircles.select(`.circle-${groupName.replace(/\s+/g, '-').toLowerCase()}`)
+          const safeClass = `circle-${makeSafeClassName(groupName)}`;
+          focusCircles.select(`.${safeClass}`)
             .attr("cx", x(d.date))
             .attr("cy", y(d.value));
           
-          // Add to tooltip content
           const isAllItems = groupName === "All-items";
           tooltipContent += `
-            <div style="display: flex; align-items: center; margin-bottom: 5px; 
+            <div style="display: flex; align-items: center; margin-bottom: 5px;
                 ${isAllItems ? 'font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 8px;' : ''}">
               <div style="width: 10px; height: 10px; background: ${color(groupName)}; margin-right: 8px;"></div>
               <strong>${groupName}:</strong> ${d.value.toFixed(1)}
@@ -311,7 +313,6 @@
         }
       });
       
-      // Update tooltip
       tooltip
         .style("left", (event.pageX + 15) + "px")
         .style("top", (event.pageY - 28) + "px")
@@ -319,64 +320,16 @@
     }
   }
   
-  // Initialize the visualization with the first province
+  // Initial load
   updateVisualization();
   
-  // Add event listener to the filter button
+  // Filter button
   d3.select("#filter-button").on("click", updateVisualization);
   
-  // Add event listener to reset zoom
+  // Reset zoom
   d3.select("#reset-zoom").on("click", function() {
     d3.select("#vis3 svg g").transition()
       .duration(750)
       .call(d3.zoom().transform, d3.zoomIdentity);
   });
-  
-  // Add some CSS to style the UI controls
-  const style = document.createElement('style');
-  style.textContent = `
-    .control-panel {
-      background: #f8f8f8;
-      padding: 10px;
-      border-radius: 4px;
-      margin-bottom: 15px;
-    }
-    
-    #province-select {
-      padding: 5px;
-      margin: 0 10px;
-      min-width: 150px;
-    }
-    
-    button {
-      background: #4676bd;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-    
-    button:hover {
-      background: #3a5d8f;
-    }
-    
-    .focus-line, .focus-circles {
-      transition: opacity 0.2s;
-    }
-    
-    .tooltip {
-      transition: opacity 0.2s;
-      max-width: 300px;
-    }
-    
-    .line-group {
-      transition: opacity 0.2s;
-    }
-    
-    .line-group:hover {
-      stroke-width: 3px;
-    }
-  `;
-  document.head.appendChild(style);
 })();
