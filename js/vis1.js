@@ -111,59 +111,6 @@
     .text(d => d)
     .property("selected", d => d === years[years.length - 1]); // Default to latest year
   
-  // Add color scale selector
-  const colorSelector = controlPanel.append("div")
-    .style("margin-bottom", "10px");
-  
-  colorSelector.append("label")
-    .text("Color Scale: ")
-    .attr("for", "color-scale");
-  
-  const colorScales = [
-    { name: "Blues", value: "blues" },
-    { name: "Reds", value: "reds" },
-    { name: "Greens", value: "greens" },
-    { name: "Purple-Green", value: "purplegreen" },
-    { name: "Red-Blue", value: "redblue" }
-  ];
-  
-  const colorSelect = colorSelector.append("select")
-    .attr("id", "color-scale")
-    .style("margin-left", "10px")
-    .style("padding", "5px")
-    .on("change", updateVisualization);
-  
-  colorSelect.selectAll("option")
-    .data(colorScales)
-    .enter()
-    .append("option")
-    .attr("value", d => d.value)
-    .text(d => d.name);
-  
-  // Add view type selector (absolute values or monthly changes)
-  const viewSelector = controlPanel.append("div")
-    .style("margin-bottom", "10px");
-  
-  viewSelector.append("label")
-    .text("View Type: ")
-    .attr("for", "view-type");
-  
-  const viewSelect = viewSelector.append("select")
-    .attr("id", "view-type")
-    .style("margin-left", "10px")
-    .style("padding", "5px")
-    .on("change", updateVisualization);
-  
-  viewSelect.selectAll("option")
-    .data([
-      { name: "Absolute Values", value: "absolute" },
-      { name: "Monthly Changes (%)", value: "changes" }
-    ])
-    .enter()
-    .append("option")
-    .attr("value", d => d.value)
-    .text(d => d.name);
-  
   // Add apply button
   controlPanel.append("button")
     .attr("class", "apply-filters-button")
@@ -171,37 +118,29 @@
     .style("padding", "5px 10px")
     .on("click", updateVisualization);
   
-  // 3) Chart dimensions
-  const margin = { top: 50, right: 30, bottom: 50, left: 40 },
-        width = 960 - margin.left - margin.right,
-        height = 600 - margin.top - margin.bottom,
-        cellSize = 25; // cell size for calendar
-
-  // 4) Create SVG + container for plotting
-  const svg = d3.select("#vis1")
-    .append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-    .append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
+  // Add scroll instructions
+  controlPanel.append("div")
+    .attr("class", "scroll-instructions")
+    .style("margin-top", "10px")
+    .style("font-style", "italic")
+    .style("color", "#666")
+    .text("← Scroll horizontally to view all years →");
   
-  // Add title
-  const title = svg.append("text")
-    .attr("class", "chart-title")
-    .attr("x", width / 2)
-    .attr("y", -30)
-    .attr("text-anchor", "middle")
-    .style("font-size", "16px")
-    .style("font-weight", "bold");
+  // Create a scrollable container for the calendar visualization
+  const scrollContainer = d3.select("#vis1").append("div")
+    .attr("class", "scroll-container")
+    .style("width", "100%")
+    .style("overflow-x", "auto")
+    .style("overflow-y", "hidden")
+    .style("margin-top", "20px")
+    .style("position", "relative")
+    .style("padding", "10px 0");
   
-  // Add a group for the calendar
-  const calendarGroup = svg.append("g")
-    .attr("class", "calendar-group");
-  
-  // Add legend group
-  const legendGroup = svg.append("g")
-    .attr("class", "legend-group")
-    .attr("transform", `translate(${width - 260}, ${height - 40})`);
+  // Create a fixed-size container for all years
+  const calendarContainer = scrollContainer.append("div")
+    .attr("class", "calendar-container")
+    .style("display", "inline-flex")
+    .style("flex-wrap", "nowrap");
   
   // Add tooltip
   const tooltip = d3.select("body")
@@ -221,6 +160,9 @@
   
   // Function to update visualization based on selected product and years
   function updateVisualization() {
+    // Clear previous content
+    calendarContainer.html("");
+    
     // Get selected product
     const selectedProduct = productSelect.property("value");
     
@@ -228,11 +170,15 @@
     const startYear = +yearStartSelect.property("value");
     const endYear = +yearEndSelect.property("value");
     
-    // Get selected color scale
-    const selectedColorScale = colorSelect.property("value");
-    
-    // Get view type
-    const viewType = viewSelect.property("value");
+    // Add title to the container
+    scrollContainer.selectAll(".calendar-title").remove();
+    scrollContainer.insert("div", ":first-child")
+      .attr("class", "calendar-title")
+      .style("text-align", "center")
+      .style("font-weight", "bold")
+      .style("font-size", "16px")
+      .style("margin-bottom", "10px")
+      .text(`Monthly CPI Changes: ${selectedProduct} (${startYear}-${endYear})`);
     
     // Filter data for selected product (Canada only) and years
     const filteredData = data.filter(d => 
@@ -242,184 +188,147 @@
       d.date.getFullYear() <= endYear
     );
     
-    // Update title
-    title.text(`${viewType === "absolute" ? "CPI Values" : "Monthly CPI Changes"}: ${selectedProduct} (${startYear}-${endYear})`);
+    // Process data to calculate month-to-month changes
+    const yearData = {};
     
-    // Process data for calendar view (monthly data)
-    const years = [];
+    // First, collect all data by year and month
+    filteredData.forEach(d => {
+      const year = d.date.getFullYear();
+      const month = d.date.getMonth();
+      
+      if (!yearData[year]) {
+        yearData[year] = Array(12).fill(null);
+      }
+      
+      yearData[year][month] = {
+        date: d.date,
+        value: d.value,
+        change: null // Will calculate this next
+      };
+    });
+    
+    // Then calculate the changes
     for (let year = startYear; year <= endYear; year++) {
-      const yearData = filteredData.filter(d => d.date.getFullYear() === year);
+      if (!yearData[year]) continue;
       
-      // Sort by month
-      yearData.sort((a, b) => a.date.getMonth() - b.date.getMonth());
-      
-      // Calculate monthly changes
-      const monthlyData = [];
       for (let month = 0; month < 12; month++) {
-        const monthData = yearData.filter(d => d.date.getMonth() === month);
+        if (!yearData[year][month]) continue;
         
-        if (monthData.length > 0) {
-          // Find previous month's data
-          let change = 0;
-          if (month > 0) {
-            const prevMonth = yearData.filter(d => d.date.getMonth() === month - 1);
-            if (prevMonth.length > 0) {
-              change = ((monthData[0].value / prevMonth[0].value) - 1) * 100;
-            }
-          } else if (year > startYear) {
-            // For January, compare with previous December
-            const prevYear = filteredData.filter(d => d.date.getFullYear() === year - 1 && d.date.getMonth() === 11);
-            if (prevYear.length > 0) {
-              change = ((monthData[0].value / prevYear[0].value) - 1) * 100;
-            }
-          }
-          
-          monthlyData.push({
-            date: monthData[0].date,
-            value: monthData[0].value,
-            change: change
-          });
-        } else {
-          // If no data for this month, add placeholder
-          monthlyData.push({
-            date: new Date(year, month, 1),
-            value: null,
-            change: null
-          });
+        // Calculate change from previous month
+        if (month > 0 && yearData[year][month-1]) {
+          // Compare with previous month of same year
+          yearData[year][month].change = ((yearData[year][month].value / yearData[year][month-1].value) - 1) * 100;
+        } else if (month === 0 && year > startYear && yearData[year-1] && yearData[year-1][11]) {
+          // Compare January with previous December
+          yearData[year][month].change = ((yearData[year][month].value / yearData[year-1][11].value) - 1) * 100;
         }
       }
-      
-      years.push({
-        year,
-        months: monthlyData
+    }
+    
+    // Find max change for color scale
+    let maxChange = 0;
+    Object.values(yearData).forEach(months => {
+      months.forEach(month => {
+        if (month && month.change !== null) {
+          maxChange = Math.max(maxChange, Math.abs(month.change));
+        }
       });
-    }
+    });
     
-    // Define color scale function
-    function getColorScale(type, domain) {
-      switch(type) {
-        case "blues":
-          return d3.scaleSequential(d3.interpolateBlues)
-            .domain(domain);
-        case "reds":
-          return d3.scaleSequential(d3.interpolateReds)
-            .domain(domain);
-        case "greens":
-          return d3.scaleSequential(d3.interpolateGreens)
-            .domain(domain);
-        case "purplegreen":
-          return d3.scaleSequential(d3.interpolatePRGn)
-            .domain([domain[1], domain[0]]); // Invert for diverging
-        case "redblue":
-          return d3.scaleSequential(d3.interpolateRdBu)
-            .domain([domain[1], domain[0]]); // Invert for diverging
-        default:
-          return d3.scaleSequential(d3.interpolateBlues)
-            .domain(domain);
-      }
-    }
+    // Add some buffer to max change for better visualization
+    maxChange = Math.ceil(maxChange * 1.1);
     
-    // Find domain for color scale based on view type
-    let colorScale;
-    if (viewType === "absolute") {
-      // Absolute values
-      const values = filteredData.map(d => d.value).filter(v => v !== null);
-      const minValue = d3.min(values);
-      const maxValue = d3.max(values);
-      colorScale = getColorScale(selectedColorScale, [minValue, maxValue]);
-    } else {
-      // Monthly changes
-      const changes = [];
-      years.forEach(year => {
-        year.months.forEach(month => {
-          if (month.change !== null) changes.push(month.change);
-        });
-      });
+    // Create color scale (red for increases, blue for decreases)
+    const colorScale = d3.scaleSequential(d3.interpolateRdBu)
+      .domain([maxChange, -maxChange]);
+    
+    // Create a year calendar for each year in the range
+    for (let year = startYear; year <= endYear; year++) {
+      // Create a container for this year
+      const yearContainer = calendarContainer.append("div")
+        .attr("class", "year-container")
+        .style("margin-right", "20px")
+        .style("display", "inline-block")
+        .style("vertical-align", "top")
+        .style("min-width", "350px");
       
-      const maxChange = Math.max(
-        Math.abs(d3.min(changes) || 0),
-        Math.abs(d3.max(changes) || 0)
-      );
+      // Add year title
+      yearContainer.append("div")
+        .attr("class", "year-title")
+        .style("text-align", "center")
+        .style("font-weight", "bold")
+        .style("margin-bottom", "10px")
+        .text(year);
       
-      // For changes, always use a diverging scale
-      colorScale = d3.scaleSequential(d3.interpolateRdBu)
-        .domain([maxChange, -maxChange]); // Red for positive (price increases), blue for negative
-    }
-    
-    // Clear previous elements
-    calendarGroup.selectAll("*").remove();
-    legendGroup.selectAll("*").remove();
-    
-    // Set up the calendar layout
-    const yearHeight = 160; // Height per year
-    const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
-    // Draw each year's calendar
-    years.forEach((yearData, i) => {
-      const yearGroup = calendarGroup.append("g")
-        .attr("class", "year")
-        .attr("transform", `translate(0, ${i * yearHeight})`);
-      
-      // Add year label
-      yearGroup.append("text")
-        .attr("class", "year-label")
-        .attr("x", 0)
-        .attr("y", 20)
-        .attr("font-size", "16px")
-        .attr("font-weight", "bold")
-        .text(yearData.year);
-      
-      // Draw month cells
-      const monthGroups = yearGroup.selectAll(".month")
-        .data(yearData.months)
-        .enter()
-        .append("g")
-        .attr("class", "month")
-        .attr("transform", (d, i) => `translate(${60 + i * (cellSize + 5)}, 0)`);
+      // Create the calendar grid
+      const calendarGrid = yearContainer.append("div")
+        .attr("class", "calendar-grid")
+        .style("display", "grid")
+        .style("grid-template-columns", "repeat(12, 1fr)")
+        .style("gap", "5px");
       
       // Add month labels
-      monthGroups.append("text")
-        .attr("class", "month-label")
-        .attr("x", cellSize / 2)
-        .attr("y", 20)
-        .attr("text-anchor", "middle")
-        .attr("font-size", "12px")
-        .text((d, i) => monthLabels[i]);
+      const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       
-      // Add month cells
-      monthGroups.append("rect")
-        .attr("class", "month-cell")
-        .attr("x", 0)
-        .attr("y", 30)
-        .attr("width", cellSize)
-        .attr("height", cellSize)
-        .attr("rx", 2)
-        .attr("ry", 2)
-        .attr("fill", d => {
-          const value = viewType === "absolute" ? d.value : d.change;
-          return value !== null ? colorScale(value) : "#eee";
-        })
-        .attr("stroke", "#ccc")
-        .attr("stroke-width", 1)
-        .on("mouseover", function(event, d) {
-          // Highlight cell
+      monthLabels.forEach(month => {
+        calendarGrid.append("div")
+          .attr("class", "month-label")
+          .style("text-align", "center")
+          .style("font-size", "12px")
+          .text(month);
+      });
+      
+      // Add cells for each month
+      const monthsData = yearData[year] || Array(12).fill(null);
+      
+      monthsData.forEach((month, i) => {
+        const cell = calendarGrid.append("div")
+          .attr("class", "month-cell")
+          .style("width", "25px")
+          .style("height", "25px")
+          .style("border-radius", "4px")
+          .style("display", "flex")
+          .style("align-items", "center")
+          .style("justify-content", "center")
+          .style("cursor", "pointer")
+          .style("font-size", "10px")
+          .style("font-weight", "bold")
+          .style("color", "#000")
+          .style("margin", "auto")
+          .style("background-color", month && month.change !== null ? colorScale(month.change) : "#eee")
+          .style("border", "1px solid #ccc")
+          .style("transition", "all 0.2s ease");
+        
+        // Add text for the change value
+        if (month && month.change !== null) {
+          const formattedChange = month.change.toFixed(1);
+          cell.text(formattedChange > 0 ? `+${formattedChange}` : formattedChange);
+        } else {
+          cell.text("n/a")
+            .style("color", "#999")
+            .style("font-weight", "normal");
+        }
+        
+        // Add hover effects
+        cell.on("mouseover", function() {
           d3.select(this)
-            .attr("stroke", "#333")
-            .attr("stroke-width", 2);
-            
-          // Show tooltip
-          const format = d3.format(viewType === "absolute" ? ".1f" : "+.2f");
-          const value = viewType === "absolute" ? d.value : d.change;
-          const formatDate = d3.timeFormat("%B %Y");
+            .style("border", "2px solid #333")
+            .style("transform", "scale(1.1)");
           
-          tooltip
-            .style("opacity", 1)
-            .html(`
-              <strong>${formatDate(d.date)}</strong><br>
-              ${selectedProduct}<br>
-              ${viewType === "absolute" ? "CPI: " : "Change: "}
-              ${value !== null ? `${format(value)}${viewType === "changes" ? "%" : ""}` : "No data"}
-            `);
+          if (month) {
+            const formatDate = d3.timeFormat("%B %Y");
+            const formatValue = d3.format("+.2f");
+            
+            tooltip
+              .style("opacity", 1)
+              .html(`
+                <strong>${month.date ? formatDate(month.date) : monthLabels[i] + ' ' + year}</strong><br>
+                ${selectedProduct}<br>
+                ${month.change !== null 
+                  ? `Change: ${formatValue(month.change)}%` 
+                  : "No data available"}
+              `);
+          }
         })
         .on("mousemove", function(event) {
           tooltip
@@ -428,159 +337,60 @@
         })
         .on("mouseout", function() {
           d3.select(this)
-            .attr("stroke", "#ccc")
-            .attr("stroke-width", 1);
-            
+            .style("border", "1px solid #ccc")
+            .style("transform", "scale(1)");
+          
           tooltip.style("opacity", 0);
         });
-      
-      // Add value labels inside cells
-      monthGroups.append("text")
-        .attr("class", "value-label")
-        .attr("x", cellSize / 2)
-        .attr("y", 30 + cellSize / 2 + 5)
-        .attr("text-anchor", "middle")
-        .attr("font-size", "10px")
-        .attr("fill", d => {
-          const value = viewType === "absolute" ? d.value : d.change;
-          if (value === null) return "#999";
-          
-          // For absolute values, use black for all
-          // For changes, make positive red and negative blue
-          if (viewType === "absolute") {
-            return "#000";
-          } else {
-            return value >= 0 ? "#000" : "#000";
-          }
-        })
-        .text(d => {
-          const value = viewType === "absolute" ? d.value : d.change;
-          if (value === null) return "n/a";
-          
-          const format = d3.format(viewType === "absolute" ? ".0f" : "+.1f");
-          return format(value) + (viewType === "changes" ? "%" : "");
-        });
-    });
+      });
+    }
     
     // Add legend
-    if (viewType === "absolute") {
-      // Sequential legend for absolute values
-      const legendValues = d3.ticks(colorScale.domain()[0], colorScale.domain()[1], 5);
-      
-      legendGroup.append("text")
-        .attr("class", "legend-title")
-        .attr("x", 0)
-        .attr("y", -10)
-        .text("CPI Values");
-      
-      const legendWidth = 200;
-      const legendHeight = 15;
-      
-      // Add gradient rectangle
-      const defs = svg.append("defs");
-      
-      const linearGradient = defs.append("linearGradient")
-        .attr("id", "linear-gradient");
-      
-      linearGradient.selectAll("stop")
-        .data(d3.range(10))
-        .enter().append("stop")
-        .attr("offset", (d, i) => `${i * 10}%`)
-        .attr("stop-color", d => colorScale(d3.interpolate(colorScale.domain()[0], colorScale.domain()[1])(d / 10)));
-      
-      legendGroup.append("rect")
-        .attr("width", legendWidth)
-        .attr("height", legendHeight)
-        .style("fill", "url(#linear-gradient)");
-      
-      // Add ticks
-      const legendScale = d3.scaleLinear()
-        .domain(colorScale.domain())
-        .range([0, legendWidth]);
-      
-      const legendAxis = d3.axisBottom(legendScale)
-        .tickValues(legendValues)
-        .tickFormat(d3.format(".0f"));
-      
-      legendGroup.append("g")
-        .attr("transform", `translate(0, ${legendHeight})`)
-        .call(legendAxis);
-      
-    } else {
-      // Diverging legend for changes
-      const legendValues = d3.ticks(-colorScale.domain()[0], colorScale.domain()[0], 5);
-      
-      legendGroup.append("text")
-        .attr("class", "legend-title")
-        .attr("x", 0)
-        .attr("y", -10)
-        .text("Monthly Change (%)");
-      
-      const legendWidth = 200;
-      const legendHeight = 15;
-      
-      // Add gradient rectangle
-      const defs = svg.append("defs");
-      
-      const linearGradient = defs.append("linearGradient")
-        .attr("id", "linear-gradient-change");
-      
-      linearGradient.selectAll("stop")
-        .data(d3.range(10))
-        .enter().append("stop")
-        .attr("offset", (d, i) => `${i * 10}%`)
-        .attr("stop-color", d => colorScale(d3.interpolate(colorScale.domain()[0], colorScale.domain()[1])(d / 10)));
-      
-      legendGroup.append("rect")
-        .attr("width", legendWidth)
-        .attr("height", legendHeight)
-        .style("fill", "url(#linear-gradient-change)");
-      
-      // Add ticks
-      const legendScale = d3.scaleLinear()
-        .domain([-colorScale.domain()[0], colorScale.domain()[0]])
-        .range([0, legendWidth]);
-      
-      const legendAxis = d3.axisBottom(legendScale)
-        .tickValues(legendValues)
-        .tickFormat(d => `${d > 0 ? "+" : ""}${d.toFixed(1)}%`);
-      
-      legendGroup.append("g")
-        .attr("transform", `translate(0, ${legendHeight})`)
-        .call(legendAxis);
-    }
+    scrollContainer.selectAll(".legend-container").remove();
+    
+    const legendContainer = scrollContainer.append("div")
+      .attr("class", "legend-container")
+      .style("margin-top", "20px")
+      .style("text-align", "center");
+    
+    legendContainer.append("div")
+      .attr("class", "legend-title")
+      .style("font-weight", "bold")
+      .style("margin-bottom", "5px")
+      .text("Monthly Change (%)");
+    
+    const legendScale = document.createElement("div");
+    legendScale.className = "legend-scale";
+    legendScale.style.width = "250px";
+    legendScale.style.height = "20px";
+    legendScale.style.margin = "0 auto";
+    legendScale.style.background = "linear-gradient(to right, #ef8a62, #f7f7f7, #67a9cf)";
+    legendScale.style.borderRadius = "4px";
+    legendScale.style.position = "relative";
+    
+    legendContainer.node().appendChild(legendScale);
+    
+    const legendValues = document.createElement("div");
+    legendValues.className = "legend-values";
+    legendValues.style.display = "flex";
+    legendValues.style.justifyContent = "space-between";
+    legendValues.style.marginTop = "5px";
+    
+    const values = [
+      { value: `+${maxChange.toFixed(1)}%`, position: "left" },
+      { value: "0%", position: "center" },
+      { value: `-${maxChange.toFixed(1)}%`, position: "right" }
+    ];
+    
+    values.forEach(item => {
+      const valueSpan = document.createElement("span");
+      valueSpan.textContent = item.value;
+      valueSpan.style.fontSize = "12px";
+      valueSpan.style.fontWeight = "bold";
+      valueSpan.style.textAlign = item.position;
+      legendValues.appendChild(valueSpan);
+    });
+    
+    legendContainer.node().appendChild(legendValues);
   }
-  
-  // Add some CSS for styling
-  const style = document.createElement('style');
-  style.textContent = `
-    .control-panel {
-      background: #f8f8f8;
-      padding: 10px;
-      border-radius: 4px;
-    }
-    
-    button {
-      background: #4676bd;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-    
-    button:hover {
-      background: #3a5d8f;
-    }
-    
-    .month-cell {
-      transition: stroke 0.2s;
-      cursor: pointer;
-    }
-    
-    .tooltip {
-      transition: opacity 0.2s;
-    }
-  `;
-  document.head.appendChild(style);
 })();
