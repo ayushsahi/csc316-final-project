@@ -41,12 +41,14 @@ main {
 .vis-section {
   background: #fff;
   border-radius: 5px;
-  padding: 1em 1.5em;
+  padding: 1.5em 1.5em;
   margin-bottom: 2em;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
+  overflow: visible;
 }
 
 .vis-section h2 {
@@ -55,62 +57,56 @@ main {
   text-align: center;
 }
 
-/* Visualization canvas */
+/* Visualization canvas - removed fixed height */
 .vis-canvas {
   width: 100%;
-  max-width: 800px;
-  height: 500px;
+  min-height: 200px;
   border: 1px solid #ddd;
   background-color: #fafafa;
   margin: 0 auto;
+  overflow: visible;
+  position: relative;
+  padding: 10px;
 }
 
-/* Footer styling */
-footer {
-  background-color: #35424a;
-  color: #fff;
-  text-align: center;
-  padding: 1em 0;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .header-content h1 {
-    font-size: 2em;
-  }
-  .vis-canvas {
-    height: 400px;
-  }
-}
-
-@media (max-width: 480px) {
-  .header-content h1 {
-    font-size: 1.8em;
-  }
-  .vis-canvas {
-    height: 300px;
-  }
-}
-
-/* Visualization specific styling */
+/* Control panels for visualizations */
 .control-panel {
   background: #f8f8f8;
-  padding: 10px;
+  padding: 15px;
   border-radius: 4px;
   margin-bottom: 15px;
+  width: 100%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-#province-select {
-  padding: 5px;
-  margin: 0 10px;
-  min-width: 150px;
+/* Filter containers */
+.filter-container {
+  background: #fff;
+  border-radius: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+/* Form elements */
+select, button {
+  padding: 6px 12px;
+  margin: 5px;
+  border-radius: 4px;
+}
+
+select {
+  border: 1px solid #ccc;
+  background: white;
+  min-width: 120px;
 }
 
 button {
   background: #4676bd;
   color: white;
   border: none;
-  border-radius: 4px;
   cursor: pointer;
   transition: background 0.3s;
 }
@@ -119,20 +115,225 @@ button:hover {
   background: #3a5d8f;
 }
 
-.focus-line,
-.focus-circles {
-  transition: opacity 0.2s;
+button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
 }
 
+/* SVG styles for visualizations */
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto !important;
+  margin: 0 auto;
+}
+
+/* Tooltip styling */
 .tooltip {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  pointer-events: none;
   transition: opacity 0.2s;
+  z-index: 1000;
   max-width: 300px;
 }
 
+/* Calendar specific styles */
+.month-cell {
+  transition: stroke 0.2s;
+  cursor: pointer;
+}
+
+/* Line chart specific styles */
 .line-group {
   transition: opacity 0.2s;
 }
 
 .line-group:hover {
   stroke-width: 3px;
+}
+
+.focus-line, .focus-circles {
+  transition: opacity 0.2s;
+}
+
+/* Legend styling */
+.legend-group {
+  font-size: 12px;
+}
+
+/* Footer styling */
+footer {
+  background-color: #35424a;
+  color: #fff;
+  text-align: center;
+  padding: 1em 0;
+  margin-top: 2em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  main {
+    padding: 0 10px;
+  }
+  
+  .vis-section {
+    padding: 1em;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-content h1 {
+    font-size: 2em;
+  }
+  
+  .control-panel {
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-content h1 {
+    font-size: 1.8em;
+  }
+  
+  .control-panel {
+    font-size: 0.9em;
+  }
+  
+  select, button {
+    padding: 4px 8px;
+  }
+}
+
+/* Add these styles to your style.css file */
+
+/* Scrollable container for the calendar view */
+.scroll-container {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 15px 5px;
+  margin-bottom: 20px;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  background-color: #fcfcfc;
+  /* Customized scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: #ccc transparent;
+}
+
+/* Webkit scrollbar styling */
+.scroll-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.scroll-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.scroll-container::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+.scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* Calendar container that holds all years side by side */
+.calendar-container {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  min-width: fit-content;
+}
+
+/* Each year container */
+.year-container {
+  display: inline-block;
+  vertical-align: top;
+  margin-right: 20px;
+  min-width: 350px;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  padding: 10px;
+}
+
+/* Year title */
+.year-title {
+  text-align: center;
+  font-weight: bold;
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+/* Calendar grid layout */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 5px;
+}
+
+/* Month label styling */
+.month-label {
+  text-align: center;
+  font-size: 12px;
+  padding-bottom: 5px;
+  color: #555;
+}
+
+/* Month cell styling */
+.month-cell {
+  width: 25px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid #ccc;
+  margin: auto;
+}
+
+.month-cell:hover {
+  transform: scale(1.1);
+  border: 2px solid #333;
+  z-index: 1;
+}
+
+/* Title for the whole calendar */
+.calendar-title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+/* Legend container */
+.legend-container {
+  margin-top: 20px;
+  text-align: center;
+  padding: 5px;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* Scroll instructions */
+.scroll-instructions {
+  text-align: center;
+  font-style: italic;
+  color: #666;
+  margin: 10px 0;
+  font-size: 12px;
 }
