@@ -1,8 +1,8 @@
 (async function() {
-  // 1) Load CSV
+  // Load CSV
   const data = await d3.csv("data/food_cpi_data.csv");
 
-  // 2) Parse data
+  // Parse data
   const parseDate = d3.timeParse("%Y-%m");
   data.forEach(d => {
     d.date = parseDate(d["REF_DATE"]) || d3.timeParse("%Y-%m-%d")(d["REF_DATE"]);
@@ -86,18 +86,16 @@
     
     checkboxContainer.append("label")
       .attr("for", `vis2-product-${product.replace(/\s+/g, '-').toLowerCase()}`)
-      // Use the helper function cleanLabel() to remove " (excluding poultry)"
       .text(cleanLabel(product));
   });
+
   
-  // (Apply button removed: updates occur on checkbox change)
-  
-  // 4) Chart dimensions
+  // Chart dimensions
   const margin = { top: 40, right: 30, bottom: 120, left: 60 },
         width  = 800 - margin.left - margin.right,
         height = 500 - margin.top  - margin.bottom;
   
-  // 5) Create SVG
+  // Create SVG
   const svg = d3.select("#vis2")
     .append("svg")
     .attr("width",  width  + margin.left + margin.right)
@@ -140,7 +138,7 @@
   // Initialize with all products
   updateVisualization();
   
-  // Helper function to clean product labels by removing " (excluding poultry)"
+  // Helper function to clean product labels
   function cleanLabel(label) {
     return label.replace(" (excluding poultry)", "");
   }
@@ -156,14 +154,14 @@
     // Filter data for selected products
     const filteredData = data.filter(d => selectedProducts.includes(d["Products and product groups"]));
     
-    // Aggregate by product group (mean across all data)
+    // Aggregate by product group 
     const groupRollup = d3.rollups(
       filteredData,
       v => d3.mean(v, d => d.value),
       d => d["Products and product groups"]
     );
     
-    // Transform into an array of objects and clean product names for display
+    // Clean product names for display
     const barData = groupRollup.map(([product, avgValue]) => ({
       product: cleanLabel(product),
       avgValue

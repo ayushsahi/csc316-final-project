@@ -1,9 +1,8 @@
-// Enhanced vis3.js file with province filtering, product group filtering, and improved zooming
 (async function() {
-  // 1) Load CSV
+  // Load CSV
   const data = await d3.csv("data/food_cpi_data.csv");
   
-  // 2) Parse date & numeric value
+  // Parse date & numeric value
   const parseDate = d3.timeParse("%Y-%m-%d");
   data.forEach(d => {
     d.date = parseDate(d["REF_DATE"]) || d3.timeParse("%Y-%m")(d["REF_DATE"]);
@@ -68,7 +67,7 @@
   // Container for product checkboxes
   const filterContainer = controlPanel.append("div")
     .attr("class", "filter-container")
-    .style("display", "none");  // Hidden by default
+    .style("display", "none"); 
   
   // Toggle filter display logic
   toggleButton.on("click", function() {
@@ -321,7 +320,7 @@
         .attr("stroke-width", 2);
     });
     
-    // Remove old overlay, add a fresh one for mouse tracking
+    // Remove old overlay
     svg.select(".overlay").remove();
     svg.append("rect")
       .attr("class", "overlay")
@@ -349,7 +348,7 @@
       const formatDate = d3.timeFormat("%B %Y");
       let tooltipContent = `<strong>Date:</strong> ${formatDate(xDate)}<br><br>`;
       
-      // Sort so "All-items" (if present) is on top in the tooltip
+      // Sort so "All-items" is on top in the tooltip
       const sortedGroups = [...nested].sort((a, b) => {
         if (a[0] === "All-items") return -1;
         if (b[0] === "All-items") return 1;

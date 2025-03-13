@@ -57,7 +57,7 @@ main {
   text-align: center;
 }
 
-/* Visualization canvas - removed fixed height */
+/* Visualization canvas */
 .vis-canvas {
   width: 100%;
   min-height: 200px;
@@ -72,7 +72,7 @@ main {
 /* Control panel (applies to #vis2 or #vis3, etc.) */
 .control-panel {
   background: #f8f8f8;
-  padding: 15px; /* or 10px if you prefer from the old style */
+  padding: 15px; 
   border-radius: 4px;
   margin-bottom: 20px;
   width: 100%;
@@ -101,6 +101,10 @@ main {
   margin-bottom: 5px;
 }
 
+.filter-container input[type="checkbox"] + label {
+  margin-left: 5px;
+}
+
 /* Buttons */
 button {
   background: #4676bd;
@@ -127,9 +131,6 @@ button:disabled {
   margin-bottom: 10px;
 }
 
-.apply-filters-button {
-  /* any special styling if you want */
-}
 
 /* SVG styles for visualizations */
 svg {
@@ -139,7 +140,7 @@ svg {
   margin: 0 auto;
 }
 
-/* Generic tooltip styling (shared with others, e.g. line chart) */
+/* Tooltip styling */
 .tooltip,
 .tooltip-bar {
   position: absolute;
@@ -156,12 +157,12 @@ svg {
 
 /* Bars for bar chart */
 .bar {
-  fill: steelblue;         /* default color */
-  transition: fill 0.3s;   /* from your inline style */
+  fill: steelblue;        
+  transition: fill 0.3s;   
 }
 
 .bar:hover {
-  fill: #ff7f0e;           /* from your inline style */
+  fill: #ff7f0e;          
 }
 
 /* Calendar specific styles */
@@ -195,10 +196,6 @@ footer {
   text-align: center;
   padding: 1em 0;
   margin-top: 2em;
-}
-
-.filter-container input[type="checkbox"] + label {
-  margin-left: 5px;
 }
 
 /* Responsive adjustments */

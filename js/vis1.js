@@ -1,8 +1,8 @@
 (async function() {
-  // 1) Load CSV
+  // Load CSV
   const data = await d3.csv("data/food_cpi_data.csv");
 
-  // 2) Create UI controls for filtering
+  // Create UI controls for filtering
   const controlPanel = d3.select("#vis1")
     .append("div")
     .attr("class", "control-panel")
@@ -126,7 +126,7 @@
     .style("color", "#666")
     .text("← Scroll horizontally to view all years →");
   
-  // Create a scrollable container for the calendar visualization
+  // Scrollable container for the calendar visualization
   const scrollContainer = d3.select("#vis1").append("div")
     .attr("class", "scroll-container")
     .style("width", "100%")
@@ -136,7 +136,7 @@
     .style("position", "relative")
     .style("padding", "10px 0");
   
-  // Create a fixed-size container for all years
+  // Fixed-size container for all years
   const calendarContainer = scrollContainer.append("div")
     .attr("class", "calendar-container")
     .style("display", "inline-flex")
@@ -158,7 +158,7 @@
   // Initialize visualization
   updateVisualization();
   
-  // Function to update visualization based on selected product and years
+  // Update visualization based on selected product and years
   function updateVisualization() {
     // Clear previous content
     calendarContainer.html("");
@@ -203,7 +203,7 @@
       yearData[year][month] = {
         date: d.date,
         value: d.value,
-        change: null // Will calculate this next
+        change: null
       };
     });
     
@@ -235,7 +235,7 @@
       });
     });
     
-    // Add some buffer to max change for better visualization
+    // Buffer to max change for better visualization
     maxChange = Math.ceil(maxChange * 1.1);
     
     // Create color scale (red for increases, blue for decreases)
@@ -244,7 +244,7 @@
     
     // Create a year calendar for each year in the range
     for (let year = startYear; year <= endYear; year++) {
-      // Create a container for this year
+      // Container for this year
       const yearContainer = calendarContainer.append("div")
         .attr("class", "year-container")
         .style("margin-right", "20px")
