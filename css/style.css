@@ -69,17 +69,17 @@ main {
   padding: 10px;
 }
 
-/* Control panels for visualizations */
+/* Control panel (applies to #vis2 or #vis3, etc.) */
 .control-panel {
   background: #f8f8f8;
-  padding: 15px;
+  padding: 15px; /* or 10px if you prefer from the old style */
   border-radius: 4px;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
   width: 100%;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-/* Filter containers */
+/* Filter containers (for checkboxes) */
 .filter-container {
   background: #fff;
   border-radius: 4px;
@@ -88,27 +88,29 @@ main {
   border: 1px solid #ddd;
   padding: 10px;
   margin-bottom: 10px;
+  display: none; /* toggled in code */
 }
 
-/* Form elements */
-select, button {
-  padding: 6px 12px;
-  margin: 5px;
-  border-radius: 4px;
+/* The container that holds "Select All" / "Select None" buttons */
+.select-all-container {
+  margin-bottom: 10px;
 }
 
-select {
-  border: 1px solid #ccc;
-  background: white;
-  min-width: 120px;
+/* Each product group container for the checkbox + label */
+.checkbox-container {
+  margin-bottom: 5px;
 }
 
+/* Buttons */
 button {
   background: #4676bd;
   color: white;
   border: none;
+  border-radius: 4px;
   cursor: pointer;
   transition: background 0.3s;
+  padding: 6px 12px; 
+  margin: 5px;       
 }
 
 button:hover {
@@ -120,6 +122,15 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* For toggling the filter container */
+.toggle-filters-button {
+  margin-bottom: 10px;
+}
+
+.apply-filters-button {
+  /* any special styling if you want */
+}
+
 /* SVG styles for visualizations */
 svg {
   display: block;
@@ -128,8 +139,9 @@ svg {
   margin: 0 auto;
 }
 
-/* Tooltip styling */
-.tooltip {
+/* Generic tooltip styling (shared with others, e.g. line chart) */
+.tooltip,
+.tooltip-bar {
   position: absolute;
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid #ddd;
@@ -140,6 +152,16 @@ svg {
   transition: opacity 0.2s;
   z-index: 1000;
   max-width: 300px;
+}
+
+/* Bars for bar chart */
+.bar {
+  fill: steelblue;         /* default color */
+  transition: fill 0.3s;   /* from your inline style */
+}
+
+.bar:hover {
+  fill: #ff7f0e;           /* from your inline style */
 }
 
 /* Calendar specific styles */
@@ -157,136 +179,6 @@ svg {
   stroke-width: 3px;
 }
 
-
-
-
-
-
-/* Scrollable container for the calendar view */
-.scroll-container {
-  width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 15px 5px;
-  margin-bottom: 20px;
-  border: 1px solid #eee;
-  border-radius: 4px;
-  background-color: #fcfcfc;
-  /* Customized scrollbar */
-  scrollbar-width: thin;
-  scrollbar-color: #ccc transparent;
-}
-
-/* Webkit scrollbar styling */
-.scroll-container::-webkit-scrollbar {
-  height: 8px;
-}
-
-.scroll-container::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-.scroll-container::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 4px;
-}
-
-.scroll-container::-webkit-scrollbar-thumb:hover {
-  background: #999;
-}
-
-/* Calendar container that holds all years side by side */
-.calendar-container {
-  display: inline-flex;
-  flex-wrap: nowrap;
-  min-width: fit-content;
-}
-
-/* Each year container */
-.year-container {
-  display: inline-block;
-  vertical-align: top;
-  margin-right: 20px;
-  min-width: 350px;
-  background-color: white;
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  padding: 10px;
-}
-
-/* Year title */
-.year-title {
-  text-align: center;
-  font-weight: bold;
-  margin-bottom: 10px;
-  font-size: 16px;
-}
-
-/* Calendar grid layout */
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 5px;
-}
-
-/* Month label styling */
-.month-label {
-  text-align: center;
-  font-size: 12px;
-  padding-bottom: 5px;
-  color: #555;
-}
-
-/* Month cell styling */
-.month-cell {
-  width: 25px;
-  height: 25px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid #ccc;
-  margin: auto;
-}
-
-.month-cell:hover {
-  transform: scale(1.1);
-  border: 2px solid #333;
-  z-index: 1;
-}
-
-/* Title for the whole calendar */
-.calendar-title {
-  text-align: center;
-  font-weight: bold;
-  font-size: 16px;
-  margin-bottom: 15px;
-  color: #333;
-}
-
-/* Legend container */
-.legend-container {
-  margin-top: 20px;
-  text-align: center;
-  padding: 5px;
-  background-color: white;
-  border-radius: 4px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-}
-
-/* Scroll instructions */
-.scroll-instructions {
-  text-align: center;
-  font-style: italic;
-  color: #666;
-  margin: 10px 0;
-  font-size: 12px;
-}
 .focus-line, .focus-circles {
   transition: opacity 0.2s;
 }
@@ -303,6 +195,10 @@ footer {
   text-align: center;
   padding: 1em 0;
   margin-top: 2em;
+}
+
+.filter-container input[type="checkbox"] + label {
+  margin-left: 5px;
 }
 
 /* Responsive adjustments */
@@ -338,132 +234,4 @@ footer {
   select, button {
     padding: 4px 8px;
   }
-}
-
-/* Add these styles to your style.css file */
-
-/* Scrollable container for the calendar view */
-.scroll-container {
-  width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 15px 5px;
-  margin-bottom: 20px;
-  border: 1px solid #eee;
-  border-radius: 4px;
-  background-color: #fcfcfc;
-  /* Customized scrollbar */
-  scrollbar-width: thin;
-  scrollbar-color: #ccc transparent;
-}
-
-/* Webkit scrollbar styling */
-.scroll-container::-webkit-scrollbar {
-  height: 8px;
-}
-
-.scroll-container::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-.scroll-container::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 4px;
-}
-
-.scroll-container::-webkit-scrollbar-thumb:hover {
-  background: #999;
-}
-
-/* Calendar container that holds all years side by side */
-.calendar-container {
-  display: inline-flex;
-  flex-wrap: nowrap;
-  min-width: fit-content;
-}
-
-/* Each year container */
-.year-container {
-  display: inline-block;
-  vertical-align: top;
-  margin-right: 20px;
-  min-width: 350px;
-  background-color: white;
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  padding: 10px;
-}
-
-/* Year title */
-.year-title {
-  text-align: center;
-  font-weight: bold;
-  margin-bottom: 10px;
-  font-size: 16px;
-}
-
-/* Calendar grid layout */
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 5px;
-}
-
-/* Month label styling */
-.month-label {
-  text-align: center;
-  font-size: 12px;
-  padding-bottom: 5px;
-  color: #555;
-}
-
-/* Month cell styling */
-.month-cell {
-  width: 25px;
-  height: 25px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid #ccc;
-  margin: auto;
-}
-
-.month-cell:hover {
-  transform: scale(1.1);
-  border: 2px solid #333;
-  z-index: 1;
-}
-
-/* Title for the whole calendar */
-.calendar-title {
-  text-align: center;
-  font-weight: bold;
-  font-size: 16px;
-  margin-bottom: 15px;
-  color: #333;
-}
-
-/* Legend container */
-.legend-container {
-  margin-top: 20px;
-  text-align: center;
-  padding: 5px;
-  background-color: white;
-  border-radius: 4px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-}
-
-/* Scroll instructions */
-.scroll-instructions {
-  text-align: center;
-  font-style: italic;
-  color: #666;
-  margin: 10px 0;
-  font-size: 12px;
 }
