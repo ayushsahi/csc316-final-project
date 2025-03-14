@@ -112,7 +112,6 @@ button {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.3s;
   padding: 6px 12px; 
   margin: 5px;       
 }

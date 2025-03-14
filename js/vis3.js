@@ -57,17 +57,26 @@
   // Add product group filter section
   controlPanel.append("div")
     .attr("class", "filter-title")
-    .text("Filter by Product Group");
+    .text("Filter by Product Group")
+    .style("font-weight", "bold")
+    .style("margin", "10px 0");
   
   // Add toggle button to show/hide filters
   const toggleButton = controlPanel.append("button")
     .attr("class", "toggle-filters-button")
-    .text("Show Product Filters");
+    .text("Show Product Filters")
+    .style("margin-bottom", "10px")
+    .style("padding", "5px 10px");
 
   // Container for product checkboxes
   const filterContainer = controlPanel.append("div")
     .attr("class", "filter-container")
-    .style("display", "none"); 
+    .style("display", "none")
+    .style("max-height", "200px")
+    .style("overflow-y", "auto")
+    .style("border", "1px solid #ddd")
+    .style("padding", "10px")
+    .style("margin-bottom", "10px");
   
   // Toggle filter display logic
   toggleButton.on("click", function() {
@@ -77,10 +86,13 @@
   });
   
   // Select all/none container
-  const selectAllContainer = filterContainer.append("div");
+  const selectAllContainer = filterContainer.append("div")
+    .style("margin-bottom", "10px");
   
   selectAllContainer.append("button")
     .text("Select All")
+    .style("margin-right", "10px")
+    .style("padding", "3px 8px")
     .on("click", function() {
       filterContainer.selectAll(".product-checkbox")
         .property("checked", true);
@@ -89,6 +101,7 @@
   
   selectAllContainer.append("button")
     .text("Select None")
+    .style("padding", "3px 8px")
     .on("click", function() {
       filterContainer.selectAll(".product-checkbox")
         .property("checked", false);
@@ -97,7 +110,8 @@
   
   // Build checkboxes for each product group
   productGroups.forEach(product => {
-    const checkboxContainer = filterContainer.append("div");
+    const checkboxContainer = filterContainer.append("div")
+      .style("margin-bottom", "5px");
     
     checkboxContainer.append("input")
       .attr("type", "checkbox")
@@ -110,13 +124,15 @@
     
     checkboxContainer.append("label")
       .attr("for", `vis3-product-${product.replace(/\s+/g, '-').toLowerCase()}`)
-      .text(product);
+      .text(product)
+      .style("margin-left", "5px");
   });
   
   // Add reset zoom button
   controlPanel.append("button")
     .attr("id", "reset-zoom")
     .text("Reset Zoom")
+    .style("padding", "5px 10px")
     .on("click", function() {
       svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
     });
@@ -136,6 +152,18 @@
     .attr("height", totalHeight)
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
+  
+  // Add clip path to ensure content stays within chart boundaries
+  svg.append("defs")
+    .append("clipPath")
+    .attr("id", "chart-area")
+    .append("rect")
+    .attr("width", width)
+    .attr("height", height);
+  
+  // Create a group for the chart content that will be clipped
+  const chartArea = svg.append("g")
+    .attr("clip-path", "url(#chart-area)");
   
   // Create scales
   const x = d3.scaleTime().range([0, width]);
@@ -163,7 +191,7 @@
     .attr("transform", "rotate(-90)")
     .attr("x", -height / 2)
     .attr("y", -60)
-    .text("Consumer Price Index");
+    .text("Consumer Price Index (2002=100)");
   
   // Chart title
   const title = svg.append("text")
@@ -178,7 +206,7 @@
   const color = d3.scaleOrdinal(colorPalette);
   
   // Hover line
-  const focusLine = svg.append("line")
+  const focusLine = chartArea.append("line")
     .attr("class", "focus-line")
     .attr("y1", 0)
     .attr("y2", height)
@@ -187,29 +215,65 @@
     .attr("stroke-dasharray", "3,3")
     .style("opacity", 0);
   
-  // Tooltip
-  const tooltip = d3.select("body").append("div")
-    .attr("class", "tooltip");
+  // Create tooltip
+  const tooltip = d3.select("body")
+    .append("div")
+    .attr("class", "tooltip")
+    .style("position", "absolute")
+    .style("background", "rgba(255, 255, 255, 0.95)")
+    .style("border", "1px solid #ddd")
+    .style("border-radius", "4px")
+    .style("padding", "10px")
+    .style("box-shadow", "0 0 10px rgba(0,0,0,0.2)")
+    .style("pointer-events", "none")
+    .style("opacity", 0)
+    .style("z-index", "1000")
+    .style("max-width", "300px");
   
   // Focus circles group
-  const focusCircles = svg.append("g")
+  const focusCircles = chartArea.append("g")
     .attr("class", "focus-circles")
     .style("opacity", 0);
+  
+  // Helper function to create a safe class name
+  function makeSafeClassName(name) {
+    return name.replace(/\s+/g, '-').replace(/[()]/g, '').toLowerCase();
+  }
+  
+  // Create overlay for mouse tracking
+  const overlay = chartArea.append("rect")
+    .attr("class", "overlay")
+    .attr("width", width)
+    .attr("height", height)
+    .style("fill", "none")
+    .style("pointer-events", "all");
   
   // Zoom setup
   const zoom = d3.zoom()
     .scaleExtent([1, 8])
     .extent([[0, 0], [width, height]])
+    .translateExtent([[0, 0], [width, height]])
     .on("zoom", zoomed);
   
-  // Zoom rectangle
-  const zoomRect = svg.append("rect")
-    .attr("class", "zoom-rect")
-    .attr("width", width)
-    .attr("height", height)
-    .style("fill", "none")
-    .style("pointer-events", "all")
-    .call(zoom);
+  // Apply zoom to SVG
+  svg.call(zoom);
+  
+  // Mouse events for tooltip
+  overlay
+    .on("mouseover", () => {
+      focusLine.style("opacity", 1);
+      tooltip.style("opacity", 1);
+      focusCircles.style("opacity", 1);
+    })
+    .on("mouseout", () => {
+      focusLine.style("opacity", 0);
+      tooltip.style("opacity", 0);
+      focusCircles.style("opacity", 0);
+    })
+    .on("mousemove", mousemove);
+  
+  // Store current transform for use in mousemove
+  let currentTransform = d3.zoomIdentity;
   
   // Initial load
   updateVisualization();
@@ -217,7 +281,7 @@
   // Update chart based on selected province and products
   function updateVisualization() {
     // Clear existing lines and focus circles
-    svg.selectAll(".line-group").remove();
+    chartArea.selectAll(".line-group").remove();
     focusCircles.selectAll("*").remove();
     
     const selectedProvince = d3.select("#province-select").property("value");
@@ -274,7 +338,7 @@
       .y(d => y(d.value));
     
     // Draw lines
-    svg.selectAll(".line-group")
+    const lines = chartArea.selectAll(".line-group")
       .data(nested)
       .join("path")
       .attr("class", "line-group")
@@ -319,99 +383,107 @@
         .attr("stroke", "#fff")
         .attr("stroke-width", 2);
     });
+  }
+  
+  function mousemove(event) {
+    const mouseX = d3.pointer(event)[0];
+    // Use the transformed scale if zooming has occurred
+    const xScale = currentTransform.k > 1 ? currentTransform.rescaleX(x) : x;
+    const xDate = xScale.invert(mouseX);
     
-    // Remove old overlay
-    svg.select(".overlay").remove();
-    svg.append("rect")
-      .attr("class", "overlay")
-      .attr("width", width)
-      .attr("height", height)
-      .style("fill", "none")
-      .style("pointer-events", "all")
-      .on("mouseover", () => {
-        focusLine.style("opacity", 1);
-        tooltip.style("opacity", 1);
-        focusCircles.style("opacity", 1);
-      })
-      .on("mouseout", () => {
-        focusLine.style("opacity", 0);
-        tooltip.style("opacity", 0);
-        focusCircles.style("opacity", 0);
-      })
-      .on("mousemove", mousemove);
+    focusLine.attr("x1", mouseX).attr("x2", mouseX);
     
-    function mousemove(event) {
-      const mouseX = d3.pointer(event)[0];
-      const xDate = x.invert(mouseX);
-      focusLine.attr("x1", mouseX).attr("x2", mouseX);
+    const formatDate = d3.timeFormat("%B %Y");
+    let tooltipContent = `<strong>Date:</strong> ${formatDate(xDate)}<br><br>`;
+    
+    // Get data from updateVisualization
+    const selectedProvince = d3.select("#province-select").property("value");
+    const selectedProducts = [];
+    filterContainer.selectAll(".product-checkbox:checked").each(function() {
+      selectedProducts.push(this.value);
+    });
+    
+    // Filter data
+    const filteredData = data.filter(d => 
+      d["GEO"] === selectedProvince && 
+      selectedProducts.includes(d["Products and product groups"]) &&
+      d.date
+    );
+    
+    // Group data
+    const nested = d3.groups(filteredData, d => d["Products and product groups"]);
+    
+    // Sort for tooltip display
+    const sortedGroups = [...nested].sort((a, b) => {
+      if (a[0] === "All-items") return -1;
+      if (b[0] === "All-items") return 1;
+      return a[0].localeCompare(b[0]);
+    });
+    
+    sortedGroups.forEach(([groupName, groupData]) => {
+      const bisectDate = d3.bisector(d => d.date).left;
+      const i = bisectDate(groupData, xDate, 1);
       
-      const formatDate = d3.timeFormat("%B %Y");
-      let tooltipContent = `<strong>Date:</strong> ${formatDate(xDate)}<br><br>`;
-      
-      // Sort so "All-items" is on top in the tooltip
-      const sortedGroups = [...nested].sort((a, b) => {
-        if (a[0] === "All-items") return -1;
-        if (b[0] === "All-items") return 1;
-        return a[0].localeCompare(b[0]);
-      });
-      
-      sortedGroups.forEach(([groupName, groupData]) => {
-        const bisectDate = d3.bisector(d => d.date).left;
-        const i = bisectDate(groupData, xDate, 1);
+      if (i > 0 && i < groupData.length) {
+        const d0 = groupData[i - 1];
+        const d1 = groupData[i];
+        const d = xDate - d0.date > d1.date - xDate ? d1 : d0;
         
-        if (i > 0 && i < groupData.length) {
-          const d0 = groupData[i - 1];
-          const d1 = groupData[i];
-          const d = xDate - d0.date > d1.date - xDate ? d1 : d0;
-          
-          const safeClass = `circle-${makeSafeClassName(groupName)}`;
-          focusCircles.select(`.${safeClass}`)
-            .attr("cx", x(d.date))
-            .attr("cy", y(d.value));
-          
-          const isAllItems = groupName === "All-items";
-          tooltipContent += `
-            <div style="display: flex; align-items: center; margin-bottom: 5px;
-                ${isAllItems ? 'font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 8px;' : ''}">
-              <div style="width: 10px; height: 10px; background: ${color(groupName)}; margin-right: 8px;"></div>
-              <strong>${groupName}:</strong> ${d.value.toFixed(1)}
-            </div>
-          `;
-        }
-      });
-      
-      tooltip
-        .style("left", (event.pageX + 15) + "px")
-        .style("top", (event.pageY - 28) + "px")
-        .html(tooltipContent);
-    }
+        const safeClass = `circle-${makeSafeClassName(groupName)}`;
+        focusCircles.select(`.${safeClass}`)
+          .attr("cx", xScale(d.date))  // Use transformed scale
+          .attr("cy", y(d.value));
+        
+        const isAllItems = groupName === "All-items";
+        tooltipContent += `
+          <div style="display: flex; align-items: center; margin-bottom: 5px;
+              ${isAllItems ? 'font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 8px;' : ''}">
+            <div style="width: 10px; height: 10px; background: ${color(groupName)}; margin-right: 8px;"></div>
+            <strong>${groupName}:</strong> ${d.value.toFixed(1)}
+          </div>
+        `;
+      }
+    });
+    
+    tooltip
+      .style("left", (event.pageX + 15) + "px")
+      .style("top", (event.pageY - 28) + "px")
+      .html(tooltipContent);
   }
   
   // Zoomed function for handling zoom events
   function zoomed(event) {
+    // Store current transform for use in mousemove
+    currentTransform = event.transform;
+    
+    // Create new scale based on zoom event
     const newX = event.transform.rescaleX(x);
     
     // Update x-axis
     xAxis.call(d3.axisBottom(newX).ticks(10));
     
     // Update lines
-    svg.selectAll(".line-group").attr("d", function(d) {
+    chartArea.selectAll(".line-group").attr("d", function(d) {
       return d3.line()
-        .defined(pt => !isNaN(pt.value))
-        .x(pt => newX(pt.date))
-        .y(pt => y(pt.value))
+        .defined(d => !isNaN(d.value))
+        .x(d => newX(d.date))
+        .y(d => y(d.value))
         (d[1]);
     });
     
-    // Hide focus elements during zoom
-    focusLine.style("display", "none");
-    focusCircles.style("opacity", 0);
-    tooltip.style("opacity", 0);
-  }
-  
-  // Helper function to create a safe class name
-  function makeSafeClassName(name) {
-    return name.replace(/\s+/g, '-').replace(/[()]/g, '').toLowerCase();
+    // Update focus elements during zoom
+    if (event.sourceEvent && event.sourceEvent.type === "mousemove") {
+      const mouseX = d3.pointer(event.sourceEvent, chartArea.node())[0];
+      // Trigger mousemove to update tooltip and focus elements with new scale
+      if (mouseX >= 0 && mouseX <= width) {
+        overlay.dispatch("mousemove", { detail: event.sourceEvent });
+      } else {
+        // Hide elements if mouse is outside bounds
+        focusLine.style("opacity", 0);
+        focusCircles.style("opacity", 0);
+        tooltip.style("opacity", 0);
+      }
+    }
   }
   
   // Automatically update chart on province change
